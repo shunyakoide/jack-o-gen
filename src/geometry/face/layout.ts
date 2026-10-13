@@ -1,11 +1,35 @@
 // 顔パーツを展開図（mm）上の 2D 形状にまとめ、尖頭アーチ化・島のブリッジ・2D チェックを行う。
 
-import { applySymmetry, PART_KEYS, PART_KIND, type FaceParams, type FacePart, type PartKey } from '../../model/params';
+import { applySymmetry, PART_KEYS, PART_KIND, type FaceParams, type FacePart, type PartKey, type Params } from '../../model/params';
+import { buildBody, DRAFT_RES } from '../body';
 import type { CrossSection, Scope, Wasm } from '../manifold';
 import { findPreset, type Pt } from './presets';
 
 /** 顔パラメータは直径 120mm 基準の mm。実寸へはこの比で拡大縮小する */
 export const FACE_REF_DIAMETER = 120;
+
+/**
+ * 顔パーツが平らな底面を削らないよう、各パーツの y を下限で止める（エディタと URL 読み込みで共通）。
+ * 切り抜きは最大径の高さの中心から放射状なので、パーツ下端の仰角を「底面から床厚＋2 mm 上の側面」を見る角度までに制限する。
+ * 側面の半径はその高さで（接地リングの最大半径）+ m 以下（45° 制約）として安全側に見積もる
+ */
+export function clampFace(p: Params): FaceParams {
+  const body = buildBody(p, DRAFT_RES);
+  const { info, positions: pos, nTheta } = body;
+  let rBase = 0;
+  for (let v = 1 + (body.rings - 1) * nTheta; v < 1 + body.rings * nTheta; v++) rBase = Math.max(rBase, Math.hypot(pos[v * 3], pos[v * 3 + 1]));
+  const m = p.floor + 2;
+  const bMin = Math.atan2(info.zCenter - m, rBase + m);
+  const yMin = (-bMin * info.rEq * FACE_REF_DIAMETER) / p.diameter;
+  const face = { ...p.face };
+  for (const k of PART_KEYS) {
+    const q = face[k];
+    const a = (q.rot * Math.PI) / 180;
+    const ext = (Math.abs(q.w * Math.sin(a)) + Math.abs(q.h * Math.cos(a))) / 2;
+    if (q.y - ext < yMin) face[k] = { ...q, y: yMin + ext };
+  }
+  return face;
+}
 
 export function partPolygons(key: PartKey, part: FacePart, scale: number): { holes: Pt[][]; islands: Pt[][] } {
   const shape = findPreset(PART_KIND[key], part.preset).make();

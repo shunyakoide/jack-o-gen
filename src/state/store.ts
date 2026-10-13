@@ -1,6 +1,7 @@
 // アプリ全体の状態（zustand）。
 import { create } from 'zustand';
 import type { BuildResult } from '../geometry/build';
+import { clampFace } from '../geometry/face/layout';
 import {
   applySymmetry,
   clampNum,
@@ -99,7 +100,8 @@ export const useStore = create<State>((set) => ({
       } else {
         face = { ...face, [key]: { ...face[key], ...patch } };
       }
-      return { ...track(s, { ...s.params, face: applySymmetry(face) }), activePreset: null };
+      const params = { ...s.params, face: applySymmetry(face) };
+      return { ...track(s, { ...params, face: clampFace(params) }), activePreset: null };
     }),
   selectPart: (selectedPart) => set({ selectedPart }),
   setTab: (tab) => set({ tab }),
