@@ -47,11 +47,10 @@ h1, h3 { margin: 0; }
   padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--panel); z-index: 5;
 }
 .topbar h1 {
-  font-family: var(--font-display); font-weight: 700; font-size: 24px; line-height: 1; letter-spacing: 0.01em;
-  display: flex; align-items: center; gap: 8px; color: var(--accent-2);
-  text-shadow: 0 0 14px var(--glow), 0 0 2px rgba(255, 183, 102, 0.4);
+  font-family: var(--font); font-weight: 600; font-size: 24px; line-height: 1; letter-spacing: -0.03em;
+  display: flex; align-items: center; gap: 9px; color: var(--text);
 }
-.topbar h1 span { font-size: 20px; filter: drop-shadow(0 0 6px var(--glow)); }
+.brand-mark { display: block; width: 38px; height: auto; flex: none; }
 .topbar-actions { display: flex; gap: 8px; align-items: center; }
 .topbar h1, .topbar-actions > * { white-space: nowrap; }
 
@@ -311,7 +310,7 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
   .presets { padding-top: 2px; }
   .topbar { padding: 8px 10px; }
   .topbar h1 { font-size: 20px; gap: 6px; }
-  .topbar h1 span { font-size: 17px; }
+  .brand-mark { width: 30px; }
   .topbar-actions { gap: 6px; }
   .topbar-actions .ghost { padding: 6px 9px; }
   /* 出力タブのダウンロードボタンはスクロールせずに押せるようシート下端に貼り付ける。
@@ -320,6 +319,11 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
   .tab-body { padding-bottom: 10px; }
   .export { display: contents; }
   .export > .primary { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 0 0 12px var(--panel); }
+}
+
+@media (max-width: 380px) {
+  .topbar { flex-wrap: wrap; }
+  .topbar-actions { margin-left: auto; }
 }
 
 .group { display: flex; flex-direction: column; gap: 12px; }
