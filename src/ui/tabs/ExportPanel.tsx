@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { boxOf, partSize, type Vec3 } from '../../geometry/layout';
 import { useT } from '../../i18n';
 import { useStore } from '../../state/store';
 import { geometry } from '../../worker/client';
@@ -23,6 +24,11 @@ export function ExportPanel() {
   const [msg, setMsg] = useState<string | null>(null);
   const red = preview?.level === 'red';
   const name = `jack-o-gen-${params.mode === 'lantern' ? 'lantern' : 'sealed'}-${params.seed}`;
+  // ダウンロードされるファイルと大きさ（ヘタは seatZ を底面として測る）
+  const files: [string, Vec3][] = preview
+    ? [[`${name}.stl`, [preview.stats.width, preview.stats.depth, preview.stats.height]]]
+    : [];
+  if (preview?.stem) files.push([`${name}-stem.stl`, partSize(boxOf(preview.stem.positions), preview.stem.seatZ)]);
 
   const doExport = async () => {
     setConfirm(false);
@@ -46,9 +52,14 @@ export function ExportPanel() {
   return (
     <div className="export">
       {preview && (
-        <p className="size-line">
-          {t('size')}: {preview.stats.width.toFixed(0)} × {preview.stats.depth.toFixed(0)} × {preview.stats.height.toFixed(0)} mm
-        </p>
+        <ul className="file-list" aria-label={t('files')}>
+          {files.map(([f, [w, d, h]]) => (
+            <li key={f}>
+              <span className="file-name">{f}</span>
+              <span>{t('check.bed.size', { w: w.toFixed(0), d: d.toFixed(0), h: h.toFixed(0) })}</span>
+            </li>
+          ))}
+        </ul>
       )}
       <button className="primary" disabled={busy || red || !preview} onClick={() => (params.mode === 'lantern' ? setConfirm(true) : doExport())}>
         {busy ? t('generating') : red ? t('blocked') : t('download')}

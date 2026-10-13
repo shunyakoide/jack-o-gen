@@ -97,7 +97,7 @@ export const ja: Record<string, string> = {
   checking: 'チェック中',
   seeChecks: 'チェック結果を見る',
   checksTitle: 'プリント適性チェック',
-  size: 'サイズ',
+  files: 'ダウンロードされるファイル',
   download: 'STLをダウンロード',
   generating: '生成中…',
   blocked: '出力不可の項目があります',

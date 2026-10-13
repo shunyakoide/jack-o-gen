@@ -97,7 +97,7 @@ export const en: Record<string, string> = {
   checking: 'Checking…',
   seeChecks: 'See check results',
   checksTitle: 'Print checks',
-  size: 'Size',
+  files: 'Files to download',
   download: 'Download STL',
   generating: 'Generating…',
   blocked: 'Fix the red items first',

@@ -5,6 +5,7 @@ import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { MeshGroup, PartKindId } from '../geometry/build';
+import { printLayout, type Box } from '../geometry/layout';
 import { useStore } from '../state/store';
 
 const KIND_ORDER: PartKindId[] = ['body', 'stem', 'cut', 'inner'];
@@ -27,6 +28,7 @@ function usePumpkinGeometry(r: { positions: Float32Array; indices: Uint32Array; 
 
 function Pumpkin() {
   const preview = useStore((s) => s.preview);
+  const printTab = useStore((s) => s.tab === 'print');
   const geom = usePumpkinGeometry(preview);
   // 差し込み式のヘタは別メッシュ（本体と同じワールド座標）
   const stemGeom = usePumpkinGeometry(preview?.stem);
@@ -40,14 +42,17 @@ function Pumpkin() {
     [],
   );
   if (!geom) return null;
-  const bb = geom.boundingBox!;
-  const cx = (bb.min.x + bb.max.x) / 2;
-  const cy = (bb.min.y + bb.max.y) / 2;
+  const box = (g: THREE.BufferGeometry): Box => ({ min: g.boundingBox!.min.toArray(), max: g.boundingBox!.max.toArray() });
+  const bodyBox = box(geom);
+  // Print タブではダウンロードされるファイルどおりの配置（ヘタはベッドに置いて本体の横）
+  const layout = printTab && stemGeom && preview?.stem
+    ? printLayout(bodyBox, { box: box(stemGeom), seatZ: preview.stem.seatZ })
+    : printLayout(bodyBox, null);
   // z 上（造形座標）→ y 上（three.js）。正面（−y）がカメラ側（+z）を向く
   return (
     <group rotation={[-Math.PI / 2, 0, 0]}>
-      <mesh geometry={geom} material={materials} position={[-cx, -cy, -bb.min.z]} castShadow receiveShadow />
-      {stemGeom && <mesh geometry={stemGeom} material={materials[1]} position={[-cx, -cy, -bb.min.z]} castShadow receiveShadow />}
+      <mesh geometry={geom} material={materials} position={layout.body} castShadow receiveShadow />
+      {stemGeom && <mesh geometry={stemGeom} material={materials[1]} position={layout.stem ?? layout.body} castShadow receiveShadow />}
     </group>
   );
 }
@@ -58,9 +63,10 @@ export function Viewer() {
   const building = useStore((s) => s.building);
   const preview = useStore((s) => s.preview);
   const error = useStore((s) => s.error);
+  const printTab = useStore((s) => s.tab === 'print');
   const h = preview?.stats.height ?? 120;
-  // 形状が届くたびに ContactShadows を作り直して焼き直す
-  const shadowKey = useMemo(() => ++shadowSeq, [preview]);
+  // 形状が届くたび・配置が変わるたびに ContactShadows を作り直して焼き直す
+  const shadowKey = useMemo(() => ++shadowSeq, [preview, printTab]);
   return (
     <div className="viewer">
       {/* 操作中だけ描画（demand）。影は形状が変わったときに 1 回だけ焼く */}
