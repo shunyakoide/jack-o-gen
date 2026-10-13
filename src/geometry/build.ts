@@ -45,6 +45,8 @@ export const MIN_HOLE = 2;
 export const MIN_LINK = 3;
 // ランタン内天井の傾き（tan 20°）。内側は見えないので 70° オーバーハングまで許す（壁厚一定を優先）
 export const CEIL_SLOPE = Math.tan((20 * Math.PI) / 180);
+// 内天井の中央をブリッジで渡す半径（Ø50 mm。内側なので多少の垂れは許容）
+export const BRIDGE_R = 25;
 
 function toManifold(wasm: Wasm, scope: Scope, positions: Float32Array, indices: Uint32Array): Manifold {
   const mesh = new wasm.Mesh({ numProp: 3, vertProperties: positions, triVerts: indices });
@@ -127,10 +129,17 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
       const firstBottom = 1 + (body.rings - 1) * nt;
       for (let v = firstBottom; v < inner.length / 3; v++) inner[v * 3 + 2] = -1;
       // 内天井の円錐（水平から約 20° = 70° オーバーハング）。経線を赤道から上へたどり、
-      // 内面がこの傾きより寝始めた点から上だけを円錐で埋める。それより下は壁厚一定のまま
+      // 内面がこの傾きより寝始めた点から上だけを円錐で埋める。それより下は壁厚一定のまま。
+      // 中心（ヘタのくぼみ）は半径 BRIDGE_R までの平らな天井にしてブリッジで渡す。
+      // 円錐を中心の最低点から始めずに済むので、平たい形でも肩が厚くならない
       const k = CEIL_SLOPE;
-      const zk = (v: number) => inner[v * 3 + 2] + k * Math.hypot(inner[v * 3], inner[v * 3 + 1]);
-      let zApex = zk(0);
+      const rOf = (v: number) => Math.hypot(inner[v * 3], inner[v * 3 + 1]);
+      const zk = (v: number) => inner[v * 3 + 2] + k * rOf(v);
+      let zCap = inner[2];
+      for (let v = 1; v < inner.length / 3; v++) {
+        if (inner[v * 3 + 2] >= info.zCenter && rOf(v) <= BRIDGE_R) zCap = Math.min(zCap, inner[v * 3 + 2]);
+      }
+      let zApex = zCap + k * BRIDGE_R;
       for (let i = 0; i < nt; i++) {
         let flat = false;
         for (let j = body.rings; j >= 1; j--) {
@@ -138,7 +147,7 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
           if (inner[v * 3 + 2] < info.zCenter) continue;
           // 上の点（j=1 は極）へ向かって z + k·r が減る = 円錐より寝ている
           if (!flat) flat = zk(j > 1 ? v - nt : 0) < zk(v);
-          if (flat) zApex = Math.min(zApex, zk(v));
+          if (flat && rOf(v) > BRIDGE_R) zApex = Math.min(zApex, zk(v));
         }
       }
       const innerM = toManifold(wasm, scope, inner, body.indices);
@@ -148,7 +157,7 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
         scope.keep(scope.keep(wasm.Manifold.cylinder(h, h / k, 0, fine ? 192 : 64)).translate([0, 0, zApex - h])).asOriginal(),
       );
       // draft では天井の円錐カットを省く（頂上の内側だけなので外からは見えず、ブーリアン 1 回分速い）
-      const ceiling = quality === 'draft' ? innerM : scope.keep(innerM.intersect(cone));
+      const ceiling = quality === 'draft' ? innerM : scope.keep(scope.keep(innerM.intersect(cone)).trimByPlane([0, 0, -1], -zCap));
       const cavity = scope.keep(ceiling.trimByPlane([0, 0, 1], p.floor));
       const led = scope.keep(
         scope.keep(wasm.Manifold.cylinder(p.floor + 2, p.led / 2, p.led / 2, fine ? 128 : 48)).translate([0, 0, -1]),

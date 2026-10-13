@@ -90,15 +90,17 @@ describe('buildPumpkin', () => {
   });
 
   it('ランタンの目・口まわりの壁は壁厚どおり薄い（天井円錐が側面まで食い込まない）', () => {
-    const { r } = summary(defaultParams());
-    const g = r.groups.find((g) => g.kind === 'cut')!;
-    let depth = 0;
-    for (let i = g.start; i < g.start + g.count; i += 3) {
-      const y = [0, 1, 2].map((k) => r.positions[r.indices[i + k] * 3 + 1]);
-      depth = Math.max(depth, Math.max(...y) - Math.min(...y));
+    for (const card of PRESET_CARDS) {
+      const { r } = summary(card.make(42));
+      const g = r.groups.find((g) => g.kind === 'cut')!;
+      let depth = 0;
+      for (let i = g.start; i < g.start + g.count; i += 3) {
+        const y = [0, 1, 2].map((k) => r.positions[r.indices[i + k] * 3 + 1]);
+        depth = Math.max(depth, Math.max(...y) - Math.min(...y));
+      }
+      // 旧 45° 円錐では 25〜38 mm あった
+      expect(depth, card.id).toBeLessThan(6);
     }
-    // 旧 45° 円錐では 25 mm 近くあった
-    expect(depth).toBeLessThan(8);
   });
 
   it('書き出し解像度でも manifold、STL が書ける', () => {
