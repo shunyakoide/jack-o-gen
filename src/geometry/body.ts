@@ -86,11 +86,9 @@ export const DRAFT_RES: Resolution = { theta: 64, rings: 28 };
 export const PREVIEW_RES: Resolution = { theta: 120, rings: 56 };
 export const EXPORT_RES: Resolution = { theta: 360, rings: 160 };
 
-/** 接地径の実効値。ランタンでは LED 開口＋余白が収まるよう広げる */
+/** 接地径の実効値。LED 開口＋余白が収まるよう広げる */
 export function effectiveFlat(p: Params): number {
-  let f = p.flat;
-  if (p.mode === 'lantern') f = Math.max(f, (p.led + 2 * (p.wall + 4)) / p.diameter);
-  return Math.min(0.85, f);
+  return Math.min(0.85, Math.max(p.flat, (p.led + 2 * (p.wall + 4)) / p.diameter));
 }
 
 export function buildBody(p: Params, res: Resolution): Body {

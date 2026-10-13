@@ -58,23 +58,19 @@ describe('buildPumpkin', () => {
     });
   }
   for (const card of PRESET_CARDS) {
-    for (const mode of ['lantern', 'sealed'] as const) {
-      it(`${card.id} (${mode})は単一の manifold`, () => {
-        const p = { ...card.make(42), mode };
-        const { r, bad } = summary(p);
-        if (bad.length) console.log(card.id, mode, bad);
-        const m = r.checks.find((c) => c.id === 'manifold')!;
-        expect(m.level, m.detail).toBe('green');
-        expect(r.level).not.toBe('red');
-      });
-    }
+    it(`${card.id}は単一の manifold`, () => {
+      const { r, bad } = summary(card.make(42));
+      if (bad.length) console.log(card.id, bad);
+      const m = r.checks.find((c) => c.id === 'manifold')!;
+      expect(m.level, m.detail).toBe('green');
+      expect(r.level).not.toBe('red');
+    });
   }
 
   it('ランダム 20 形状がすべて manifold', () => {
     const random = PRESET_CARDS.find((c) => c.id === 'random')!;
     for (let s = 1; s <= 20; s++) {
-      const p = { ...random.make(s * 7919), mode: s % 2 ? 'lantern' : 'sealed' } as Params;
-      const { r } = summary(p);
+      const { r } = summary(random.make(s * 7919));
       const m = r.checks.find((c) => c.id === 'manifold')!;
       expect(m.level, `seed ${s}: ${m.detail}`).toBe('green');
     }
@@ -82,11 +78,9 @@ describe('buildPumpkin', () => {
 
   it('draft（操作中プレビュー）でも全プリセットが manifold', () => {
     for (const card of PRESET_CARDS) {
-      for (const mode of ['lantern', 'sealed'] as const) {
-        const { r } = summary({ ...card.make(42), mode }, 'draft');
-        const m = r.checks.find((c) => c.id === 'manifold')!;
-        expect(m.level, `${card.id} ${mode}: ${m.detail}`).toBe('green');
-      }
+      const { r } = summary(card.make(42), 'draft');
+      const m = r.checks.find((c) => c.id === 'manifold')!;
+      expect(m.level, `${card.id}: ${m.detail}`).toBe('green');
     }
   });
 
@@ -140,31 +134,27 @@ function solidOf(positions: Float32Array, indices: Uint32Array) {
 
 describe('ヘタ差し込み式', () => {
   for (const card of PRESET_CARDS) {
-    for (const mode of ['lantern', 'sealed'] as const) {
-      it(`${card.id} (${mode})：本体とヘタがそれぞれ単一の manifold で、差しても干渉しない`, () => {
-        const p: Params = { ...card.make(42), mode, stemAttach: 'peg' };
-        const { r } = summary(p);
-        expect(r.checks.find((c) => c.id === 'manifold')!.level).toBe('green');
-        const st = r.stem!;
-        const body = solidOf(r.positions, r.indices);
-        const stem = solidOf(st.positions, st.indices);
-        expect(stem.status()).toBe('NoError');
-        expect(stem.decompose().length).toBe(1);
-        let zMin = Infinity;
-        for (let i = 2; i < st.positions.length; i += 3) zMin = Math.min(zMin, st.positions[i]);
-        expect(zMin).toBeCloseTo(st.seatZ, 3);
-        expect(body.intersect(stem).volume()).toBeLessThan(0.5);
-      });
-    }
+    it(`${card.id}：本体とヘタがそれぞれ単一の manifold で、差しても干渉しない`, () => {
+      const p: Params = { ...card.make(42), stemAttach: 'peg' };
+      const { r } = summary(p);
+      expect(r.checks.find((c) => c.id === 'manifold')!.level).toBe('green');
+      const st = r.stem!;
+      const body = solidOf(r.positions, r.indices);
+      const stem = solidOf(st.positions, st.indices);
+      expect(stem.status()).toBe('NoError');
+      expect(stem.decompose().length).toBe(1);
+      let zMin = Infinity;
+      for (let i = 2; i < st.positions.length; i += 3) zMin = Math.min(zMin, st.positions[i]);
+      expect(zMin).toBeCloseTo(st.seatZ, 3);
+      expect(body.intersect(stem).volume()).toBeLessThan(0.5);
+    });
   }
 
   it('draft でも本体・ヘタとも単一の manifold', () => {
     for (const card of PRESET_CARDS) {
-      for (const mode of ['lantern', 'sealed'] as const) {
-        const { r } = summary({ ...card.make(42), mode, stemAttach: 'peg' }, 'draft');
-        expect(r.checks.find((c) => c.id === 'manifold')!.level, `${card.id} ${mode}`).toBe('green');
-        expect(solidOf(r.stem!.positions, r.stem!.indices).decompose().length, `${card.id} ${mode}`).toBe(1);
-      }
+      const { r } = summary({ ...card.make(42), stemAttach: 'peg' }, 'draft');
+      expect(r.checks.find((c) => c.id === 'manifold')!.level, card.id).toBe('green');
+      expect(solidOf(r.stem!.positions, r.stem!.indices).decompose().length, card.id).toBe(1);
     }
   });
 
@@ -196,7 +186,6 @@ describe('URL', () => {
     expect(q.ribs).toBe(p.ribs);
     expect(q.face.mouth.preset).toBe(p.face.mouth.preset);
     expect(q.face.eyeL.x).toBeCloseTo(p.face.eyeL.x, 1);
-    expect(q.mode).toBe(p.mode);
     expect(q.stemAttach).toBe('fused');
     expect(decodeParams(encodeParams({ ...p, stemAttach: 'peg' }))!.stemAttach).toBe('peg');
   });

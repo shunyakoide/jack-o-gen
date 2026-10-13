@@ -125,77 +125,66 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
     const ids: Record<number, PartKindId> = { [bodyM.originalID()]: 'body', [stemM.originalID()]: 'stem' };
 
     // 顔の 2D レイアウト
-    const lantern = p.mode === 'lantern';
     const face = layoutFace(wasm, scope, p.face, {
       scale: p.diameter / FACE_REF_DIAMETER,
       arch: p.arch > 0,
       bridge: p.bridge,
-      checkScale: lantern ? (info.rEq - p.wall) / info.rEq : 1,
+      checkScale: (info.rEq - p.wall) / info.rEq,
       minHole: MIN_HOLE,
       minLink: MIN_LINK,
     });
     const contours = ((face.cs?.toPolygons() ?? []) as Pt[][]).map((poly) => subdivide(poly, fine ? 0.8 : quality === 'draft' ? 5 : 2.5));
-    const frame = { z: info.zCenter, rEq: info.rEq, rIn: info.rEq * (lantern ? 0.2 : 0.5), rOut: info.rMax * 1.7 };
+    const frame = { z: info.zCenter, rEq: info.rEq, rIn: info.rEq * 0.2, rOut: info.rMax * 1.7 };
     const frustum = radialFrustum(wasm, scope, contours, frame);
     if (frustum) ids[frustum.originalID()] = 'cut';
 
-    let result: Manifold;
-    if (lantern) {
-      const inner = offsetInward(body, p.wall);
-      // 底面リングと底面中心を下へ延ばし、床は平面カットで作る
-      const nt = body.nTheta;
-      const firstBottom = 1 + (body.rings - 1) * nt;
-      for (let v = firstBottom; v < inner.length / 3; v++) inner[v * 3 + 2] = -1;
-      // 内天井の円錐（水平から約 20° = 70° オーバーハング）。経線を赤道から上へたどり、
-      // 内面がこの傾きより寝始めた点から上だけを円錐で埋める。それより下は壁厚一定のまま。
-      // 中心（ヘタのくぼみ）は半径 BRIDGE_R までの平らな天井にしてブリッジで渡す。
-      // 円錐を中心の最低点から始めずに済むので、平たい形でも肩が厚くならない
-      const k = CEIL_SLOPE;
-      const rOf = (v: number) => Math.hypot(inner[v * 3], inner[v * 3 + 1]);
-      const zk = (v: number) => inner[v * 3 + 2] + k * rOf(v);
-      let zCap = inner[2];
-      for (let v = 1; v < inner.length / 3; v++) {
-        if (inner[v * 3 + 2] >= info.zCenter && rOf(v) <= BRIDGE_R) zCap = Math.min(zCap, inner[v * 3 + 2]);
-      }
-      zCeil = zCap;
-      let zApex = zCap + k * BRIDGE_R;
-      for (let i = 0; i < nt; i++) {
-        let flat = false;
-        for (let j = body.rings; j >= 1; j--) {
-          const v = 1 + (j - 1) * nt + i;
-          if (inner[v * 3 + 2] < info.zCenter) continue;
-          // 上の点（j=1 は極）へ向かって z + k·r が減る = 円錐より寝ている
-          if (!flat) flat = zk(j > 1 ? v - nt : 0) < zk(v);
-          if (flat && rOf(v) > BRIDGE_R) zApex = Math.min(zApex, zk(v));
-        }
-      }
-      const innerM = toManifold(wasm, scope, inner, body.indices);
-      ids[innerM.originalID()] = 'inner';
-      const h = zApex + 10;
-      const cone = scope.keep(
-        scope.keep(scope.keep(wasm.Manifold.cylinder(h, h / k, 0, fine ? 192 : 64)).translate([0, 0, zApex - h])).asOriginal(),
-      );
-      // draft では天井の円錐カットを省く（頂上の内側だけなので外からは見えず、ブーリアン 1 回分速い）
-      const ceiling = quality === 'draft' ? innerM : scope.keep(scope.keep(innerM.intersect(cone)).trimByPlane([0, 0, -1], -zCap));
-      const cavity = scope.keep(ceiling.trimByPlane([0, 0, 1], p.floor));
-      const led = scope.keep(
-        scope.keep(wasm.Manifold.cylinder(p.floor + 2, p.led / 2, p.led / 2, fine ? 128 : 48)).translate([0, 0, -1]),
-      );
-      const ledId = led.asOriginal();
-      scope.keep(ledId);
-      ids[ledId.originalID()] = 'inner';
-      ids[cone.originalID()] = 'inner';
-      const cutters = [cavity, ledId];
-      if (frustum) cutters.push(frustum);
-      result = scope.keep(solid.subtract(scope.keep(wasm.Manifold.union(cutters))));
-    } else if (frustum) {
-      const innerM = toManifold(wasm, scope, offsetInward(body, p.engrave), body.indices);
-      const engr = scope.keep(frustum.subtract(innerM));
-      ids[innerM.originalID()] = 'cut';
-      result = scope.keep(solid.subtract(engr));
-    } else {
-      result = solid;
+    const inner = offsetInward(body, p.wall);
+    // 底面リングと底面中心を下へ延ばし、床は平面カットで作る
+    const nt = body.nTheta;
+    const firstBottom = 1 + (body.rings - 1) * nt;
+    for (let v = firstBottom; v < inner.length / 3; v++) inner[v * 3 + 2] = -1;
+    // 内天井の円錐（水平から約 20° = 70° オーバーハング）。経線を赤道から上へたどり、
+    // 内面がこの傾きより寝始めた点から上だけを円錐で埋める。それより下は壁厚一定のまま。
+    // 中心（ヘタのくぼみ）は半径 BRIDGE_R までの平らな天井にしてブリッジで渡す。
+    // 円錐を中心の最低点から始めずに済むので、平たい形でも肩が厚くならない
+    const k = CEIL_SLOPE;
+    const rOf = (v: number) => Math.hypot(inner[v * 3], inner[v * 3 + 1]);
+    const zk = (v: number) => inner[v * 3 + 2] + k * rOf(v);
+    let zCap = inner[2];
+    for (let v = 1; v < inner.length / 3; v++) {
+      if (inner[v * 3 + 2] >= info.zCenter && rOf(v) <= BRIDGE_R) zCap = Math.min(zCap, inner[v * 3 + 2]);
     }
+    zCeil = zCap;
+    let zApex = zCap + k * BRIDGE_R;
+    for (let i = 0; i < nt; i++) {
+      let flat = false;
+      for (let j = body.rings; j >= 1; j--) {
+        const v = 1 + (j - 1) * nt + i;
+        if (inner[v * 3 + 2] < info.zCenter) continue;
+        // 上の点（j=1 は極）へ向かって z + k·r が減る = 円錐より寝ている
+        if (!flat) flat = zk(j > 1 ? v - nt : 0) < zk(v);
+        if (flat && rOf(v) > BRIDGE_R) zApex = Math.min(zApex, zk(v));
+      }
+    }
+    const innerM = toManifold(wasm, scope, inner, body.indices);
+    ids[innerM.originalID()] = 'inner';
+    const h = zApex + 10;
+    const cone = scope.keep(
+      scope.keep(scope.keep(wasm.Manifold.cylinder(h, h / k, 0, fine ? 192 : 64)).translate([0, 0, zApex - h])).asOriginal(),
+    );
+    // draft では天井の円錐カットを省く（頂上の内側だけなので外からは見えず、ブーリアン 1 回分速い）
+    const ceiling = quality === 'draft' ? innerM : scope.keep(scope.keep(innerM.intersect(cone)).trimByPlane([0, 0, -1], -zCap));
+    const cavity = scope.keep(ceiling.trimByPlane([0, 0, 1], p.floor));
+    const led = scope.keep(
+      scope.keep(wasm.Manifold.cylinder(p.floor + 2, p.led / 2, p.led / 2, fine ? 128 : 48)).translate([0, 0, -1]),
+    );
+    const ledId = led.asOriginal();
+    scope.keep(ledId);
+    ids[ledId.originalID()] = 'inner';
+    ids[cone.originalID()] = 'inner';
+    const cutters = [cavity, ledId];
+    if (frustum) cutters.push(frustum);
+    let result: Manifold = scope.keep(solid.subtract(scope.keep(wasm.Manifold.union(cutters))));
 
     let stemPart: BuildResult['stem'];
     if (peg) {

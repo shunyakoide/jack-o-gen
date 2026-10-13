@@ -26,7 +26,6 @@ const MIN_WALL = 1.2;
 
 export function runChecks(p: Params, c: CheckInput): { items: CheckItem[]; level: CheckLevel } {
   const items: CheckItem[] = [];
-  const lantern = p.mode === 'lantern';
 
   const okMesh = c.status === 'NoError' && !c.empty;
   items.push({
@@ -46,17 +45,17 @@ export function runChecks(p: Params, c: CheckInput): { items: CheckItem[]; level
 
   items.push({
     id: 'wall',
-    level: !lantern || p.wall >= MIN_WALL ? 'green' : 'red',
-    detail: lantern ? 'hollow' : 'solid',
+    level: p.wall >= MIN_WALL ? 'green' : 'red',
+    detail: 'hollow',
     vars: { min: MIN_WALL, wall: p.wall.toFixed(1) },
   });
 
   const ratio = c.stats.contactDiameter / c.stats.maxDiameter;
-  const ledFits = !lantern || p.led + 2 * p.wall + 2 <= c.stats.contactDiameter;
+  const ledFits = p.led + 2 * p.wall + 2 <= c.stats.contactDiameter;
   items.push({
     id: 'base',
     level: ratio >= 0.35 && ledFits ? 'green' : 'red',
-    detail: !lantern ? 'plain' : ledFits ? 'led' : 'ledTooBig',
+    detail: ledFits ? 'led' : 'ledTooBig',
     vars: { d: c.stats.contactDiameter.toFixed(0), pct: Math.round(ratio * 100), led: p.led },
   });
 

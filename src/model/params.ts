@@ -1,6 +1,5 @@
 // パラメータの型・初期値・範囲。UI・URL・ジオメトリで共有する唯一の定義。
 
-export type InteriorMode = 'lantern' | 'sealed';
 /** ヘタを本体と一体で出すか、別パーツ（本体のピンに差し込む）にするか */
 export type StemAttach = 'fused' | 'peg';
 export type PartKind = 'eye' | 'nose' | 'mouth';
@@ -62,11 +61,9 @@ export interface NumParams {
   wall: number;
   floor: number;
   led: number;
-  engrave: number;
 }
 
 export interface Params extends NumParams {
-  mode: InteriorMode;
   stemAttach: StemAttach;
   face: FaceParams;
 }
@@ -125,7 +122,6 @@ export const NUM_DEFS: NumDef[] = [
 
   { key: 'wall', q: 'w', group: 'print', min: 1.2, max: 4, step: 0.1, def: 1.6, unit: 'mm' },
   { key: 'led', q: 'L', group: 'print', min: 40, max: 80, step: 1, def: 44, unit: 'mm' },
-  { key: 'engrave', q: 'eg', group: 'print', min: 1, max: 2, step: 0.1, def: 1.5, unit: 'mm' },
   { key: 'floor', q: 'fb', group: 'print', min: 1.2, max: 5, step: 0.1, def: 2, unit: 'mm', hidden: true },
 ];
 
@@ -147,7 +143,7 @@ export function defaultFace(): FaceParams {
 export function defaultParams(): Params {
   const p = {} as NumParams;
   for (const d of NUM_DEFS) (p as unknown as Record<string, number>)[d.key] = d.def;
-  return { ...p, mode: 'lantern', stemAttach: 'fused', face: defaultFace() };
+  return { ...p, stemAttach: 'fused', face: defaultFace() };
 }
 
 export function clampNum(def: NumDef, v: number): number {

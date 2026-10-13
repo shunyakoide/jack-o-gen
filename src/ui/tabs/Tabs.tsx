@@ -88,30 +88,12 @@ function FaceTab() {
 
 function PrintTab() {
   const t = useT();
-  const mode = useStore((s) => s.params.mode);
-  const setMode = useStore((s) => s.setMode);
   const stemAttach = useStore((s) => s.params.stemAttach);
   const setStemAttach = useStore((s) => s.setStemAttach);
   return (
     <>
-      <div className="seg wide">
-        {(['lantern', 'sealed'] as const).map((m) => (
-          <button key={m} className={mode === m ? 'on' : ''} onClick={() => setMode(m)}>
-            {t(`mode.${m}`)}
-          </button>
-        ))}
-      </div>
-      {mode === 'lantern' ? (
-        <>
-          <LedNotice />
-          <ParamGroup group="print" exclude={['engrave']} />
-        </>
-      ) : (
-        <>
-          <p className="hint">{t('sealedHint')}</p>
-          <ParamGroup group="print" exclude={['wall', 'led']} />
-        </>
-      )}
+      <LedNotice />
+      <ParamGroup group="print" />
       <div className="seg wide">
         {(['fused', 'peg'] as const).map((a) => (
           <button key={a} className={stemAttach === a ? 'on' : ''} onClick={() => setStemAttach(a)}>

@@ -51,7 +51,6 @@ export const en: Record<string, string> = {
   'p.stemTwist': 'Twist',
   'p.wall': 'Wall thickness',
   'p.led': 'LED opening',
-  'p.engrave': 'Engrave depth',
 
   'part.eyeL': 'Left eye',
   'part.eyeR': 'Right eye',
@@ -82,14 +81,11 @@ export const en: Record<string, string> = {
   'mouth.o': 'Surprised',
   'mouth.none': 'None',
 
-  'mode.lantern': 'Lantern (hollow, cut-out)',
-  'mode.sealed': 'Solid (engraved face)',
   ledNoticeStrong: 'LED candles only.',
   ledNotice: 'PLA softens around 60 °C — never put a real flame inside.',
   'stemAttach.fused': 'Stem attached',
   'stemAttach.peg': 'Stem separate (plug-in)',
   pegHint: 'Downloads a .zip with 2 STL files (body and stem). The stem push-fits onto a pin on top; add a drop of glue if it is loose.',
-  sealedHint: 'Printed solid (set infill in your slicer); the face is engraved.',
 
   'level.green': 'Print OK',
   'level.yellow': 'Warnings',
@@ -118,9 +114,7 @@ export const en: Record<string, string> = {
   'check.bed.size': '{w} × {d} × {h} mm',
   'check.wall': 'Wall ≥ {min} mm',
   'check.wall.hollow': 'Wall {wall} mm',
-  'check.wall.solid': 'Solid mode',
   'check.base': 'Flat base',
-  'check.base.plain': 'Base Ø{d} mm ({pct}% of max width)',
   'check.base.led': 'Base Ø{d} mm ({pct}% of max width), LED opening Ø{led} mm',
   'check.base.ledTooBig': 'Base Ø{d} mm — LED opening does not fit',
   'check.hole': 'Holes ≥ 2 mm wide',

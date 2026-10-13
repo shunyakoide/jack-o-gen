@@ -24,7 +24,7 @@ export function ExportPanel() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const red = preview?.level === 'red';
-  const name = `jack-o-gen-${params.mode === 'lantern' ? 'lantern' : 'sealed'}-${params.seed}`;
+  const name = `jack-o-gen-lantern-${params.seed}`;
   // ダウンロードされるファイルと大きさ（ヘタは seatZ を底面として測る）
   const files: [string, Vec3][] = preview
     ? [[`${name}.stl`, [preview.stats.width, preview.stats.depth, preview.stats.height]]]
@@ -64,7 +64,7 @@ export function ExportPanel() {
           ))}
         </ul>
       )}
-      <button className="primary" disabled={busy || red || !preview} onClick={() => (params.mode === 'lantern' ? setConfirm(true) : doExport())}>
+      <button className="primary" disabled={busy || red || !preview} onClick={() => setConfirm(true)}>
         {busy ? t('generating') : red ? t('blocked') : t('download')}
       </button>
       {msg && <p className="hint">{msg}</p>}
