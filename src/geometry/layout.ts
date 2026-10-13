@@ -21,11 +21,14 @@ export function partSize(box: Box, floorZ = box.min[2]): Vec3 {
   return [box.max[0] - box.min[0], box.max[1] - box.min[1], box.max[2] - floorZ];
 }
 
+/** 本体とヘタの間隔 [mm] */
+export const PRINT_GAP = 10;
+
 /**
  * 本体とヘタを +x 方向に gap mm あけて並べ、組の中心をベッド中央 (0,0) に置く平行移動量。
  * 本体は底面を z=0、ヘタは seatZ を z=0 に下ろす。
  */
-export function printLayout(body: Box, stem: { box: Box; seatZ: number } | null, gap = 10): { body: Vec3; stem: Vec3 | null } {
+export function printLayout(body: Box, stem: { box: Box; seatZ: number } | null, gap = PRINT_GAP): { body: Vec3; stem: Vec3 | null } {
   const cy = (b: Box) => -(b.min[1] + b.max[1]) / 2;
   if (!stem) return { body: [-(body.min[0] + body.max[0]) / 2, cy(body), -body.min[2]], stem: null };
   const s = stem.box;

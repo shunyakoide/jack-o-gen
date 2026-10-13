@@ -6,7 +6,8 @@ import { runChecks, type CheckItem, type CheckLevel } from './checks';
 import { FACE_REF_DIAMETER, layoutFace, subdivide, type FaceCheck } from './face/layout';
 import type { Pt } from './face/presets';
 import { Scope, type Manifold, type Wasm } from './manifold';
-import { buildStem, stemPeg } from './stem';
+import { boxOf, partSize, PRINT_GAP, type Vec3 } from './layout';
+import { buildStem, FIT, stemPin, stemSeatRadius } from './stem';
 
 // draft = スライダー操作中の粗いプレビュー
 export type Quality = 'draft' | 'preview' | 'export';
@@ -41,13 +42,12 @@ export interface BuildResult {
   stem?: { positions: Float32Array; indices: Uint32Array; seatZ: number };
 }
 
-export const BED_LIMIT = 250;
-export const MIN_WALL = 1.2;
 export const MIN_HOLE = 2;
 export const MIN_LINK = 3;
 // ランタン内天井の傾き（tan 20°）。内側は見えないので 70° オーバーハングまで許す（壁厚一定を優先）
 export const CEIL_SLOPE = Math.tan((20 * Math.PI) / 180);
-// 内天井の中央をブリッジで渡す半径（Ø50 mm。内側なので多少の垂れは許容）
+// 内天井の中央をブリッジで渡す半径の上限（Ø50 mm。内側なので多少の垂れは許容）。
+// 小さい本体では 0.42·rEq に縮める（直径 60 で 25 mm のままだと頂上がほぼ全部ブリッジ高さまで埋まる。直径 120 以上は 25 mm のまま）
 export const BRIDGE_R = 25;
 
 /** manifold の頂点配列から xyz だけを取り出す */
@@ -116,10 +116,10 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
     const bodyM = toManifold(wasm, scope, body.positions, body.indices);
     const stem = buildStem(p, info.zTop, fine);
     const stemM = toManifold(wasm, scope, stem.positions, stem.indices);
-    const peg = p.stemAttach === 'peg' ? stemPeg(p) : null;
+    const rf = p.stemAttach === 'peg' ? stemSeatRadius(p) : null;
     const seg = fine ? 128 : 48;
     // 差し込み式では本体とヘタを分ける（座ぐり・ピンは CSG の最後に加える）
-    const solid = peg ? bodyM : scope.keep(bodyM.add(stemM));
+    const solid = rf ? bodyM : scope.keep(bodyM.add(stemM));
     // 中央の内天井の高さ（座ぐりが内天井を突き破らないよう深さを制限する）。draft も同じ値を使う
     let zCeil = -Infinity;
     const ids: Record<number, PartKindId> = { [bodyM.originalID()]: 'body', [stemM.originalID()]: 'stem' };
@@ -145,17 +145,18 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
     for (let v = firstBottom; v < inner.length / 3; v++) inner[v * 3 + 2] = -1;
     // 内天井の円錐（水平から約 20° = 70° オーバーハング）。経線を赤道から上へたどり、
     // 内面がこの傾きより寝始めた点から上だけを円錐で埋める。それより下は壁厚一定のまま。
-    // 中心（ヘタのくぼみ）は半径 BRIDGE_R までの平らな天井にしてブリッジで渡す。
+    // 中心（ヘタのくぼみ）は半径 bridgeR までの平らな天井にしてブリッジで渡す。
     // 円錐を中心の最低点から始めずに済むので、平たい形でも肩が厚くならない
     const k = CEIL_SLOPE;
+    const bridgeR = Math.min(BRIDGE_R, 0.42 * info.rEq);
     const rOf = (v: number) => Math.hypot(inner[v * 3], inner[v * 3 + 1]);
     const zk = (v: number) => inner[v * 3 + 2] + k * rOf(v);
     let zCap = inner[2];
     for (let v = 1; v < inner.length / 3; v++) {
-      if (inner[v * 3 + 2] >= info.zCenter && rOf(v) <= BRIDGE_R) zCap = Math.min(zCap, inner[v * 3 + 2]);
+      if (inner[v * 3 + 2] >= info.zCenter && rOf(v) <= bridgeR) zCap = Math.min(zCap, inner[v * 3 + 2]);
     }
     zCeil = zCap;
-    let zApex = zCap + k * BRIDGE_R;
+    let zApex = zCap + k * bridgeR;
     for (let i = 0; i < nt; i++) {
       let flat = false;
       for (let j = body.rings; j >= 1; j--) {
@@ -163,7 +164,7 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
         if (inner[v * 3 + 2] < info.zCenter) continue;
         // 上の点（j=1 は極）へ向かって z + k·r が減る = 円錐より寝ている
         if (!flat) flat = zk(j > 1 ? v - nt : 0) < zk(v);
-        if (flat && rOf(v) > BRIDGE_R) zApex = Math.min(zApex, zk(v));
+        if (flat && rOf(v) > bridgeR) zApex = Math.min(zApex, zk(v));
       }
     }
     const innerM = toManifold(wasm, scope, inner, body.indices);
@@ -187,18 +188,19 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
     let result: Manifold = scope.keep(solid.subtract(scope.keep(wasm.Manifold.union(cutters))));
 
     let stemPart: BuildResult['stem'];
-    if (peg) {
+    let peg: ReturnType<typeof stemPin> | null = null;
+    if (rf) {
       // 座面：ヘタの足元の範囲で外形がいちばん低い高さ。ランタンでは内天井から壁厚ぶん上までに留める
       let zSeat = Infinity;
       const bp = body.positions;
       for (let v = 0; v < bp.length / 3; v++) {
-        if (bp[v * 3 + 2] > info.zCenter && Math.hypot(bp[v * 3], bp[v * 3 + 1]) <= peg.rf) zSeat = Math.min(zSeat, bp[v * 3 + 2]);
+        if (bp[v * 3 + 2] > info.zCenter && Math.hypot(bp[v * 3], bp[v * 3 + 1]) <= rf) zSeat = Math.min(zSeat, bp[v * 3 + 2]);
       }
       zSeat = Math.max(zSeat, zCeil + p.wall);
-      const rs = peg.rf + 0.3;
-      const seat = scope.keep(scope.keep(scope.keep(wasm.Manifold.cylinder(info.zTop + 10, rs, rs, seg)).translate([0, 0, zSeat])).asOriginal());
-      // ピンは座面より 0.5 mm 下から生やして本体と確実に重ねる。先端は面取りして差し込みやすく
+      const seat = scope.keep(scope.keep(scope.keep(wasm.Manifold.cylinder(info.zTop + 10, rf, rf, seg)).translate([0, 0, zSeat])).asOriginal());
+      peg = stemPin(p, info.zTop, zSeat);
       const { rp, hp } = peg;
+      // ピンは座面より 0.5 mm 下から生やして本体と確実に重ねる。先端は面取りして差し込みやすく
       const c = Math.min(1, hp / 2);
       const pinProfile: [number, number][] = [[0, -0.5], [rp, -0.5], [rp, hp - c], [rp - 0.4 * c, hp], [0, hp]];
       const pin = scope.keep(scope.keep(scope.keep(wasm.Manifold.revolve([pinProfile], seg)).translate([0, 0, zSeat])).asOriginal());
@@ -206,8 +208,11 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
       ids[pin.originalID()] = 'body';
       result = scope.keep(scope.keep(result.subtract(seat)).add(pin));
 
-      // ヘタ側：座面で平らに切り、ピン用の穴（半径 +0.15 mm の押し込み嵌合、深さ +0.6 mm）をあける
-      const hole = scope.keep(scope.keep(wasm.Manifold.cylinder(hp + 1.6, rp + 0.15, rp + 0.15, seg)).translate([0, 0, zSeat - 1]));
+      // ヘタ側：座面で平らに切り、ピン用の穴（すき間・深さの余裕は FIT）をあける。入口は 45° に面取り
+      const rh = rp + FIT.pinClear;
+      const ch = FIT.chamfer;
+      const holeProfile: [number, number][] = [[0, -1], [rh + ch + 1, -1], [rh, ch], [rh, hp + FIT.holeExtra], [0, hp + FIT.holeExtra]];
+      const hole = scope.keep(scope.keep(wasm.Manifold.revolve([holeProfile], seg)).translate([0, 0, zSeat]));
       const stemOut = scope.keep(scope.keep(stemM.trimByPlane([0, 0, 1], zSeat)).subtract(hole)).getMesh();
       stemPart = { positions: xyz(stemOut), indices: new Uint32Array(stemOut.triVerts), seatZ: zSeat };
     }
@@ -245,11 +250,19 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
       maxDiameter: info.rMax * 2,
       rEq: info.rEq,
     };
+    // ベッド判定は書き出しと同じ配置（差し込み式はヘタを +x 側に並べる）で測る
+    const bodySize: Vec3 = [stats.width, stats.depth, stats.height];
+    const stemSize = stemPart && partSize(boxOf(stemPart.positions), stemPart.seatZ);
+    const bed: Vec3 = stemSize
+      ? [bodySize[0] + PRINT_GAP + stemSize[0], Math.max(bodySize[1], stemSize[1]), Math.max(bodySize[2], stemSize[2])]
+      : bodySize;
     const { items, level } = runChecks(p, {
       status: result.status(),
       empty: result.isEmpty(),
       components: solidParts.length,
       stats,
+      bed,
+      peg,
       face: face.check as FaceCheck,
     });
     stats.ms = performance.now() - t0;

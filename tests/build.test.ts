@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildBody, EXPORT_RES, PREVIEW_RES } from '../src/geometry/body';
 import { buildPumpkin } from '../src/geometry/build';
 import { loadManifold } from '../src/geometry/manifold';
-import { stemPeg } from '../src/geometry/stem';
+import { stemSeatRadius } from '../src/geometry/stem';
 import { toBinaryStl } from '../src/geometry/stl';
 import { defaultParams, type Params } from '../src/model/params';
 import { PRESET_CARDS } from '../src/state/presets';
@@ -164,7 +164,7 @@ describe('ヘタ差し込み式', () => {
       for (const q of card.id === 'classic' ? (['preview', 'export'] as const) : (['preview'] as const)) {
         const p: Params = { ...card.make(42), stemAttach: 'peg' };
         const { r } = summary(p, q);
-        const { rf } = stemPeg(p);
+        const rf = stemSeatRadius(p);
         const zSeat = r.stem!.seatZ;
         // 座面のすぐ下、厚さ wall の円盤が全部埋まっている
         const disc = wasm.Manifold.cylinder(p.wall - 0.05, rf, rf, 48).translate([0, 0, zSeat - p.wall]);
