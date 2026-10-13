@@ -4,6 +4,7 @@ import { PART_KEYS, PART_KIND, type PartKind, type TabId } from '../../model/par
 import { useStore } from '../../state/store';
 import { matchStem, STEM_STYLES } from '../../state/stems';
 import { FaceEditor } from '../face-editor/FaceEditor';
+import { gestureProps } from '../gesture';
 import { ParamGroup } from '../ParamGroup';
 import { ExportPanel } from './ExportPanel';
 import { LedNotice } from './LedNotice';
@@ -116,7 +117,7 @@ function FaceTab() {
         ))}
       </div>
       {current !== 'none' && (
-        <label className="slider">
+        <label className="slider" {...gestureProps}>
           <span className="slider-head">
             <span>{t('part.size')}</span>
           </span>
