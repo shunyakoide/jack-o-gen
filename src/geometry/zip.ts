@@ -16,7 +16,10 @@ export function crc32(data: Uint8Array): number {
   return (c ^ 0xffffffff) >>> 0;
 }
 
-export function zipStore(files: { name: string; data: ArrayBuffer }[]): ArrayBuffer {
+export function zipStore(files: { name: string; data: ArrayBuffer }[], date = new Date()): ArrayBuffer {
+  // DOS 形式の日時（ローカル時刻、秒は 2 秒単位）
+  const dosTime = (date.getHours() << 11) | (date.getMinutes() << 5) | (date.getSeconds() >> 1);
+  const dosDate = ((date.getFullYear() - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate();
   const enc = new TextEncoder();
   const entries = files.map((f) => ({ name: enc.encode(f.name), data: new Uint8Array(f.data), crc: crc32(new Uint8Array(f.data)), offset: 0 }));
   const localSize = entries.reduce((s, e) => s + 30 + e.name.length + e.data.length, 0);
@@ -24,13 +27,13 @@ export function zipStore(files: { name: string; data: ArrayBuffer }[]): ArrayBuf
   const out = new Uint8Array(localSize + centralSize + 22);
   const v = new DataView(out.buffer);
   let p = 0;
-  // ヘッダ共通部：必要バージョン 20、UTF-8 ファイル名フラグ、store、日時 1980-01-01
+  // ヘッダ共通部：必要バージョン 20、UTF-8 ファイル名フラグ、store、日時
   const common = (e: (typeof entries)[number]) => {
     v.setUint16(p, 20, true);
     v.setUint16(p + 2, 0x0800, true);
     v.setUint16(p + 4, 0, true);
-    v.setUint16(p + 6, 0, true);
-    v.setUint16(p + 8, 0x21, true);
+    v.setUint16(p + 6, dosTime, true);
+    v.setUint16(p + 8, dosDate, true);
     v.setUint32(p + 10, e.crc, true);
     v.setUint32(p + 14, e.data.length, true);
     v.setUint32(p + 18, e.data.length, true);

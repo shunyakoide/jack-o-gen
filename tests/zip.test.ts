@@ -10,7 +10,7 @@ describe('zipStore', () => {
   });
 
   it('中央ディレクトリから 2 ファイルの名前と中身を取り出せる', () => {
-    const buf = zipStore([{ name: 'body.stl', data: bytes('solid body') }, { name: 'body-stem.stl', data: bytes('solid stem!') }]);
+    const buf = zipStore([{ name: 'body.stl', data: bytes('solid body') }, { name: 'body-stem.stl', data: bytes('solid stem!') }], new Date(2026, 9, 24, 18, 30, 10));
     const v = new DataView(buf);
     const end = buf.byteLength - 22;
     expect(v.getUint32(end, true)).toBe(0x06054b50);
@@ -29,5 +29,7 @@ describe('zipStore', () => {
       p += 46 + nameLen;
     }
     expect(got).toEqual({ 'body.stl': 'solid body', 'body-stem.stl': 'solid stem!' });
+    // 2026-10-24 18:30:10 → DOS 日付・時刻
+    expect([v.getUint16(12, true), v.getUint16(10, true)]).toEqual([((2026 - 1980) << 9) | (10 << 5) | 24, (18 << 11) | (30 << 5) | 5]);
   });
 });
