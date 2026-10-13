@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { boxOf, partSize, type Vec3 } from '../../geometry/layout';
+import { zipStore } from '../../geometry/zip';
 import { useT } from '../../i18n';
 import { useStore } from '../../state/store';
 import { geometry } from '../../worker/client';
 import { CheckList } from '../CheckBadge';
 import { LedNotice } from './LedNotice';
 
-function download(buf: ArrayBuffer, name: string) {
-  const url = URL.createObjectURL(new Blob([buf], { type: 'model/stl' }));
+function download(buf: ArrayBuffer, name: string, type: string) {
+  const url = URL.createObjectURL(new Blob([buf], { type }));
   const a = document.createElement('a');
   a.href = url;
   a.download = name;
@@ -39,7 +40,9 @@ export function ExportPanel() {
       if (result.level === 'red') {
         setMsg(t('exportRed'));
       } else {
-        for (const f of files) download(f.stl, `${name}${f.suffix}.stl`);
+        // 複数ファイルはブラウザが 2 本目をブロックするので zip 1 つにまとめる
+        if (files.length === 1) download(files[0].stl, `${name}.stl`, 'model/stl');
+        else download(zipStore(files.map((f) => ({ name: `${name}${f.suffix}.stl`, data: f.stl }))), `${name}.zip`, 'application/zip');
         setMsg(t('exportDone', { n: result.stats.triangles.toLocaleString(), s: (result.stats.ms / 1000).toFixed(1) }));
       }
     } catch (e) {
