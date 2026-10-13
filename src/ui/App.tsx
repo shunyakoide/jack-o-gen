@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Viewer } from '../preview/Viewer';
 import { shareUrl, useAutoBuild, useUrlSync } from '../state/sync';
 import { useStore } from '../state/store';
@@ -17,6 +17,22 @@ export function App() {
   const setTab = useStore((s) => s.setTab);
   const [sheet, setSheet] = useState<'half' | 'full' | 'min'>('half');
   const [toast, setToast] = useState<string | null>(null);
+
+  // ⌘Z / Ctrl+Z で元に戻す、⇧ 付きか Ctrl+Y でやり直す（数値入力欄は自前の取り消しに任せる）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || (e.target instanceof Element && e.target.matches('input[type=number], textarea'))) return;
+      const k = e.key.toLowerCase();
+      if (k === 'z' || k === 'y') {
+        e.preventDefault();
+        const s = useStore.getState();
+        if (k === 'y' || e.shiftKey) s.redo();
+        else s.undo();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const share = async () => {
     const url = shareUrl(useStore.getState().params);

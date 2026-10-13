@@ -1,6 +1,6 @@
-import { presetsFor } from '../../geometry/face/presets';
+import { findPreset, presetsFor } from '../../geometry/face/presets';
 import { useT } from '../../i18n';
-import { PART_KEYS, PART_KIND, type TabId } from '../../model/params';
+import { PART_KEYS, PART_KIND, type PartKind, type TabId } from '../../model/params';
 import { useStore } from '../../state/store';
 import { matchStem, STEM_STYLES } from '../../state/stems';
 import { FaceEditor } from '../face-editor/FaceEditor';
@@ -38,10 +38,29 @@ function StemPicker() {
   );
 }
 
+/** プリセット形状の小さな見本（選択中パーツの縦横比で描く） */
+function ShapeThumb({ kind, id, w, h }: { kind: PartKind; id: string; w: number; h: number }) {
+  const { holes, islands } = findPreset(kind, id).make();
+  // 4:3 の枠に収まる最大の大きさ
+  const k = Math.min(4 / 3 / w, 1 / h);
+  const d = [...holes, ...islands]
+    .map((poly) => 'M' + poly.map(([u, v]) => `${(u * w * k).toFixed(3)},${(-v * h * k).toFixed(3)}`).join('L') + 'Z')
+    .join('');
+  return (
+    <svg className="shape-thumb" viewBox="-1.5 -1.125 3 2.25" aria-hidden>
+      {id === 'none' ? <path d="M-0.6,-0.6L0.6,0.6M0.6,-0.6L-0.6,0.6" className="none" /> : <path d={d} fillRule="evenodd" />}
+    </svg>
+  );
+}
+
 function FaceTab() {
   const t = useT();
   const face = useStore((s) => s.params.face);
   const selected = useStore((s) => s.selectedPart);
+  const undo = useStore((s) => s.undo);
+  const redo = useStore((s) => s.redo);
+  const canUndo = useStore((s) => s.past.length > 0);
+  const canRedo = useStore((s) => s.future.length > 0);
   const selectPart = useStore((s) => s.selectPart);
   const setPart = useStore((s) => s.setPart);
   const setSymmetric = useStore((s) => s.setSymmetric);
@@ -52,12 +71,29 @@ function FaceTab() {
   const setSize = (w: number) => setPart(selected, { w, h: Math.round(((part.h * w) / part.w) * 2) / 2 });
   return (
     <>
-      <FaceEditor />
+      <div className="fe-wrap">
+        <FaceEditor />
+        <div className="fe-tools">
+          <button className="icon-btn" onClick={undo} disabled={!canUndo} title={`${t('undo')} (⌘Z)`} aria-label={t('undo')}>
+            <svg viewBox="0 0 24 24" aria-hidden><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>
+          </button>
+          <button className="icon-btn" onClick={redo} disabled={!canRedo} title={`${t('redo')} (⇧⌘Z)`} aria-label={t('redo')}>
+            <svg viewBox="0 0 24 24" aria-hidden><path d="m15 14 5-5-5-5" /><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" /></svg>
+          </button>
+        </div>
+      </div>
       <div className="row">
         <div className="seg" role="tablist">
-          {PART_KEYS.map((k) => (
-            <button key={k} className={k === selected ? 'on' : ''} onClick={() => selectPart(k)}>
-              {t(`part.${k}`)}
+          {/* 左右対称のときは両目を 1 つのボタンにまとめる */}
+          {(face.symmetric ? (['eyeL', 'nose', 'mouth'] as const) : PART_KEYS).map((k) => (
+            <button
+              key={k}
+              role="tab"
+              aria-selected={k === selected || (face.symmetric && k === 'eyeL' && selected === 'eyeR')}
+              className={k === selected || (face.symmetric && k === 'eyeL' && selected === 'eyeR') ? 'on' : ''}
+              onClick={() => selectPart(k)}
+            >
+              {t(face.symmetric && k === 'eyeL' ? 'part.eyes' : `part.${k}`)}
             </button>
           ))}
         </div>
@@ -66,10 +102,16 @@ function FaceTab() {
           {t('symmetric')}
         </label>
       </div>
-      <div className="chips">
+      <div className="shape-grid">
         {presetsFor(kind).map((p) => (
-          <button key={p.id} className={`chip ${current === p.id ? 'on' : ''}`} onClick={() => setPart(selected, { preset: p.id })}>
-            {t(`${kind}.${p.id}`)}
+          <button
+            key={p.id}
+            className={`shape-card ${current === p.id ? 'on' : ''}`}
+            aria-pressed={current === p.id}
+            onClick={() => setPart(selected, { preset: p.id })}
+          >
+            <ShapeThumb kind={kind} id={p.id} w={part.w} h={part.h} />
+            <span>{t(`${kind}.${p.id}`)}</span>
           </button>
         ))}
       </div>

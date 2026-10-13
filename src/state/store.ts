@@ -25,6 +25,11 @@ interface State {
   building: boolean;
   error: string | null;
   activePreset: string | null;
+  /** 元に戻す / やり直す用のパラメータ履歴 */
+  past: Params[];
+  future: Params[];
+  undo: () => void;
+  redo: () => void;
   setNum: (key: keyof NumParams, v: number) => void;
   setStemAttach: (a: StemAttach) => void;
   setSymmetric: (on: boolean) => void;
@@ -45,7 +50,17 @@ function initialParams(): Params {
   return defaultParams();
 }
 
-export const useStore = create<State>((set, get) => ({
+let lastPush = 0;
+
+/** params を変更しつつ履歴に積む。ドラッグやスライダーの連続操作（0.5 秒以内）は 1 手にまとめる */
+function track(s: State, params: Params): Pick<State, 'params' | 'past' | 'future'> {
+  const now = Date.now();
+  const past = now - lastPush > 500 ? [...s.past, s.params].slice(-50) : s.past;
+  lastPush = now;
+  return { params, past, future: [] };
+}
+
+export const useStore = create<State>((set) => ({
   params: initialParams(),
   tab: 'shape',
   selectedPart: 'eyeL',
@@ -53,11 +68,25 @@ export const useStore = create<State>((set, get) => ({
   building: false,
   error: null,
   activePreset: null,
+  past: [],
+  future: [],
+  undo: () =>
+    set((s) => {
+      if (!s.past.length) return {};
+      lastPush = 0;
+      return { params: s.past[s.past.length - 1], past: s.past.slice(0, -1), future: [s.params, ...s.future], activePreset: null };
+    }),
+  redo: () =>
+    set((s) => {
+      if (!s.future.length) return {};
+      lastPush = 0;
+      return { params: s.future[0], past: [...s.past, s.params], future: s.future.slice(1), activePreset: null };
+    }),
   setNum: (key, v) =>
-    set((s) => ({ params: { ...s.params, [key]: clampNum(NUM_DEF_BY_KEY[key], v) }, activePreset: null })),
-  setStemAttach: (stemAttach) => set((s) => ({ params: { ...s.params, stemAttach } })),
+    set((s) => ({ ...track(s, { ...s.params, [key]: clampNum(NUM_DEF_BY_KEY[key], v) }), activePreset: null })),
+  setStemAttach: (stemAttach) => set((s) => track(s, { ...s.params, stemAttach })),
   setSymmetric: (on) =>
-    set((s) => ({ params: { ...s.params, face: applySymmetry({ ...s.params.face, symmetric: on }) } })),
+    set((s) => track(s, { ...s.params, face: applySymmetry({ ...s.params.face, symmetric: on }) })),
   setPart: (key, patch) =>
     set((s) => {
       let face = s.params.face;
@@ -70,7 +99,7 @@ export const useStore = create<State>((set, get) => ({
       } else {
         face = { ...face, [key]: { ...face[key], ...patch } };
       }
-      return { params: { ...s.params, face: applySymmetry(face) }, activePreset: null };
+      return { ...track(s, { ...s.params, face: applySymmetry(face) }), activePreset: null };
     }),
   selectPart: (selectedPart) => set({ selectedPart }),
   setTab: (tab) => set({ tab }),
@@ -79,12 +108,11 @@ export const useStore = create<State>((set, get) => ({
     if (!card) return;
     const seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0;
     const next = card.make(seed);
-    const { stemAttach } = get().params;
-    set({ params: { ...next, stemAttach }, activePreset: id });
+    set((s) => ({ ...track(s, { ...next, stemAttach: s.params.stemAttach }), activePreset: id }));
   },
   applyStem: (id) => {
     const st = STEM_STYLES.find((s) => s.id === id);
-    if (st) set((s) => ({ params: { ...s.params, ...st.values }, activePreset: null }));
+    if (st) set((s) => ({ ...track(s, { ...s.params, ...st.values }), activePreset: null }));
   },
   setPreview: (preview, error = null) => set({ preview, error }),
   setBuilding: (building) => set({ building }),
