@@ -5,6 +5,7 @@ import { loadManifold } from '../src/geometry/manifold';
 import { toBinaryStl } from '../src/geometry/stl';
 import { defaultParams, type Params } from '../src/model/params';
 import { PRESET_CARDS } from '../src/state/presets';
+import { matchStem, STEM_STYLES } from '../src/state/stems';
 import { decodeParams, encodeParams } from '../src/state/url';
 
 const wasm = await loadManifold();
@@ -46,6 +47,15 @@ describe('外形', () => {
 });
 
 describe('buildPumpkin', () => {
+  for (const st of STEM_STYLES) {
+    it(`ヘタ ${st.id} は単一の manifold で警告なし`, () => {
+      const p = { ...defaultParams(), ...st.values };
+      expect(matchStem(p)).toBe(st.id);
+      const { r, bad } = summary(p);
+      expect(bad).toEqual([]);
+      expect(r.level).toBe('green');
+    });
+  }
   for (const card of PRESET_CARDS) {
     for (const mode of ['lantern', 'sealed'] as const) {
       it(`${card.id} (${mode})は単一の manifold`, () => {

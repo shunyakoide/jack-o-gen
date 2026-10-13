@@ -25,6 +25,13 @@ export const en: Record<string, string> = {
   'preset.random': 'Random',
   'preset.random.hint': 'Different every time',
 
+  'stem.classic': 'Classic',
+  'stem.stubby': 'Stubby',
+  'stem.tall': 'Tall',
+  'stem.crooked': 'Crooked',
+  'stem.twisted': 'Twisted',
+  'stem.chunky': 'Chunky',
+
   'p.diameter': 'Diameter',
   'p.height': 'Height',
   'p.wobble': 'Wobble',

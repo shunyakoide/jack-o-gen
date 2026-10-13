@@ -25,6 +25,13 @@ export const ja: Record<string, string> = {
   'preset.random': 'ランダム',
   'preset.random.hint': '押すたびに違う形',
 
+  'stem.classic': '定番',
+  'stem.stubby': 'ずんぐり',
+  'stem.tall': 'のっぽ',
+  'stem.crooked': 'くねり',
+  'stem.twisted': 'ねじり',
+  'stem.chunky': '極太',
+
   'p.diameter': '直径',
   'p.height': '高さ',
   'p.wobble': '歪み',

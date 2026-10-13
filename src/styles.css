@@ -174,3 +174,10 @@ input[type='range'] { width: 100%; accent-color: var(--accent); }
 .group-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .size-line { margin: 0; color: var(--muted); }
 .ghost.lang { font-size: 12px; padding: 5px 9px; }
+.stem-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.stem-card {
+  display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 4px; font-size: 13px;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+}
+.stem-card:hover { border-color: var(--accent); }
+.stem-card.on { border-color: var(--accent); color: var(--accent-2); box-shadow: 0 0 0 1px var(--accent) inset; }
