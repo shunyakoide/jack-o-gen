@@ -167,22 +167,18 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
         if (flat && rOf(v) > bridgeR) zApex = Math.min(zApex, zk(v));
       }
     }
+    // 円錐より上にある内面の頂点を円錐面まで下ろす。多角形の円錐と intersect すると、
+    // 円錐が内面にほぼ接する所で交線がギザギザになり、円錐の細長い面も残るため、内面のメッシュのまま形を作る
+    for (let v = 0; v < inner.length / 3; v++) inner[v * 3 + 2] = Math.min(inner[v * 3 + 2], zApex - k * rOf(v));
     const innerM = toManifold(wasm, scope, inner, body.indices);
     ids[innerM.originalID()] = 'inner';
-    const h = zApex + 10;
-    const cone = scope.keep(
-      scope.keep(scope.keep(wasm.Manifold.cylinder(h, h / k, 0, fine ? 192 : 64)).translate([0, 0, zApex - h])).asOriginal(),
-    );
-    // draft では天井の円錐カットを省く（頂上の内側だけなので外からは見えず、ブーリアン 1 回分速い）
-    const ceiling = quality === 'draft' ? innerM : scope.keep(scope.keep(innerM.intersect(cone)).trimByPlane([0, 0, -1], -zCap));
-    const cavity = scope.keep(ceiling.trimByPlane([0, 0, 1], p.floor));
+    const cavity = scope.keep(scope.keep(innerM.trimByPlane([0, 0, -1], -zCap)).trimByPlane([0, 0, 1], p.floor));
     const led = scope.keep(
       scope.keep(wasm.Manifold.cylinder(p.floor + 2, p.led / 2, p.led / 2, fine ? 128 : 48)).translate([0, 0, -1]),
     );
     const ledId = led.asOriginal();
     scope.keep(ledId);
     ids[ledId.originalID()] = 'inner';
-    ids[cone.originalID()] = 'inner';
     const cutters = [cavity, ledId];
     if (frustum) cutters.push(frustum);
     let result: Manifold = scope.keep(solid.subtract(scope.keep(wasm.Manifold.union(cutters))));
