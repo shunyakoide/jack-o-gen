@@ -30,7 +30,12 @@ function StemPicker() {
   return (
     <div className="stem-grid">
       {STEM_STYLES.map((st) => (
-        <button key={st.id} className={`stem-card ${current === st.id ? 'on' : ''}`} onClick={() => apply(st.id)}>
+        <button
+          key={st.id}
+          className={`stem-card ${current === st.id ? 'on' : ''}`}
+          aria-pressed={current === st.id}
+          onClick={() => apply(st.id)}
+        >
           <span aria-hidden>{st.icon}</span>
           {t(`stem.${st.id}`)}
         </button>
@@ -84,19 +89,16 @@ function FaceTab() {
         </div>
       </div>
       <div className="row">
-        <div className="seg" role="tablist">
+        <div className="seg">
           {/* 左右対称のときは両目を 1 つのボタンにまとめる */}
-          {(face.symmetric ? (['eyeL', 'nose', 'mouth'] as const) : PART_KEYS).map((k) => (
-            <button
-              key={k}
-              role="tab"
-              aria-selected={k === selected || (face.symmetric && k === 'eyeL' && selected === 'eyeR')}
-              className={k === selected || (face.symmetric && k === 'eyeL' && selected === 'eyeR') ? 'on' : ''}
-              onClick={() => selectPart(k)}
-            >
-              {t(face.symmetric && k === 'eyeL' ? 'part.eyes' : `part.${k}`)}
-            </button>
-          ))}
+          {(face.symmetric ? (['eyeL', 'nose', 'mouth'] as const) : PART_KEYS).map((k) => {
+            const on = k === selected || (face.symmetric && k === 'eyeL' && selected === 'eyeR');
+            return (
+              <button key={k} aria-pressed={on} className={on ? 'on' : ''} onClick={() => selectPart(k)}>
+                {t(face.symmetric && k === 'eyeL' ? 'part.eyes' : `part.${k}`)}
+              </button>
+            );
+          })}
         </div>
         <label className="toggle">
           <input type="checkbox" checked={face.symmetric} onChange={(e) => setSymmetric(e.target.checked)} />
@@ -139,7 +141,7 @@ function PrintTab() {
       <ParamGroup group="print" />
       <div className="seg wide">
         {(['fused', 'peg'] as const).map((a) => (
-          <button key={a} className={stemAttach === a ? 'on' : ''} onClick={() => setStemAttach(a)}>
+          <button key={a} className={stemAttach === a ? 'on' : ''} aria-pressed={stemAttach === a} onClick={() => setStemAttach(a)}>
             {t(`stemAttach.${a}`)}
           </button>
         ))}

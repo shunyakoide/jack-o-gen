@@ -163,7 +163,7 @@ button.badge:hover { background: var(--panel-3); }
   width: 70px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; color: var(--text);
   padding: 3px 6px; text-align: right; font: inherit; font-variant-numeric: tabular-nums; transition: border-color 0.2s var(--ease);
 }
-.slider-num:hover, .slider-num:focus { border-color: var(--accent); outline: none; }
+.slider-num:hover, .slider-num:focus { border-color: var(--accent); }
 .unit { color: var(--muted); font-size: 12px; min-width: 18px; }
 
 /* スライダー：細いトラック + 灯りのようなつまみ */
@@ -180,6 +180,7 @@ input[type='range']:hover::-webkit-slider-thumb { box-shadow: 0 0 0 5px rgba(236
 input[type='range']:active::-webkit-slider-thumb { transform: scale(1.12); }
 input[type='range']:focus-visible { outline: none; }
 input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--accent-2); }
+input[type='range']:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(--accent-2); }
 
 .advanced { border-top: 1px dashed var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 12px; }
 .advanced summary {
@@ -230,6 +231,8 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
 .fe-handle { fill: #fff; stroke: var(--accent); stroke-width: 0.8; cursor: nwse-resize; }
 .fe-handle.rot { cursor: grab; fill: var(--accent-2); }
 .fe-hit { fill: transparent; stroke: none; }
+/* 指での操作ではハンドルの当たり判定を約 44px に広げる */
+@media (pointer: coarse) { .fe-hit { r: 12px; } }
 .fe-handle:hover circle:last-child { stroke-width: 1.4; }
 .fe-wrap { position: relative; }
 .fe-tools { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 4px; }
@@ -306,7 +309,13 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
   .sheet-full .stage { height: 14%; }
   .sheet-min .panel { height: 150px; }
   .sheet-min .stage { height: calc(100% - 150px); }
-  .sheet-handle { display: flex; justify-content: center; background: none; border: none; padding: 8px 0 2px; }
+  .sheet-handle { display: flex; justify-content: center; align-items: center; background: none; border: none; padding: 0; }
+  /* 主要な操作は指で押せる高さ 44px 以上にする */
+  .ghost, .badge, .seg button, .chip, .preset, .stem-card, .shape-card, .tabs button, .primary, .modal-actions button,
+  .first-hint-close, .sheet-handle, .toggle { min-height: 44px; }
+  .icon-btn { width: 44px; height: 44px; }
+  input[type='range'] { height: 44px; }
+  .slider { gap: 0; }
   .sheet-handle span { width: 44px; height: 5px; border-radius: 3px; background: var(--line); }
   .presets { padding-top: 2px; }
   .topbar { padding: 8px 10px; }
