@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Jack-o-Gen — ブランドプレビュー</title>
+    <link rel="icon" href="/favicon-32.png" />
+    <style>
+      @font-face { font-family: Outfit; src: url('/node_modules/@fontsource/outfit/files/outfit-latin-600-normal.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 32px; color: #f4ebe1; background: #140f19; font-family: Outfit, system-ui, sans-serif; }
+      main { max-width: 1000px; margin: auto; }
+      .top { display: flex; justify-content: space-between; gap: 32px; flex-wrap: wrap; align-items: center; }
+      h1 { display: flex; align-items: center; gap: 16px; margin: 0; font-size: 40px; font-weight: 600; letter-spacing: -0.03em; }
+      h1 img { width: 70px; height: auto; }
+      h2 { font-size: 12px; font-weight: 400; color: #a99bb0; margin: 0 0 16px; letter-spacing: 0.12em; }
+      .icons { display: flex; align-items: center; gap: 16px; min-height: 48px; }
+      .icons img { display: block; }
+      .light { padding: 8px; background: #f4ebe1; border-radius: 8px; }
+      .social { margin-top: 40px; }
+      .social img { display: block; width: 100%; height: auto; }
+      a { color: #ffb766; font-size: 14px; }
+      footer { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px; }
+      @media (max-width: 540px) { body { padding: 24px 16px; } h1 { font-size: 30px; } h1 img { width: 52px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="top">
+        <section><h2>ロゴ</h2><h1><img src="/brand/pumpkin.png" width="768" height="514" alt="" />Jack-o-Gen</h1></section>
+        <section><h2>ファビコン</h2><div class="icons">
+          <img src="/favicon-16.png" width="16" height="16" alt="16ピクセル" />
+          <img src="/favicon-32.png" width="32" height="32" alt="32ピクセル" />
+          <img src="/favicon-48.png" width="48" height="48" alt="48ピクセル" />
+          <span class="light"><img src="/favicon-32.png" width="32" height="32" alt="明るい背景" /></span>
+        </div></section>
+      </div>
+      <section class="social"><h2>OGカード</h2><img src="/og-card.png" width="1200" height="630" alt="Jack-o-Gen — Make your own Halloween." /></section>
+      <footer><a href="/">サイトを開く</a><a href="/brand/pumpkin.png" download>パンプキンを保存</a><a href="/og-card.png" download>OGカードを保存</a></footer>
+    </main>
+  </body>
+</html>

@@ -63,7 +63,8 @@ export function App() {
     <div className={`app sheet-${sheet}`}>
       <header className="topbar">
         <h1>
-          <span aria-hidden>🎃</span> Jack-o-Gen
+          <img className="brand-mark" src="/brand/pumpkin-small.png" width="96" height="64" alt="" />
+          Jack-o-Gen
         </h1>
         <div className="topbar-actions">
           <CheckBadge />
