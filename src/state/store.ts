@@ -14,6 +14,7 @@ import {
   type TabId,
 } from '../model/params';
 import { PRESET_CARDS } from './presets';
+import { STEM_STYLES } from './stems';
 import { decodeParams } from './url';
 
 interface State {
@@ -31,6 +32,7 @@ interface State {
   selectPart: (key: PartKey) => void;
   setTab: (t: TabId) => void;
   applyPreset: (id: string) => void;
+  applyStem: (id: string) => void;
   setPreview: (r: BuildResult | null, error?: string | null) => void;
   setBuilding: (b: boolean) => void;
 }
@@ -78,6 +80,10 @@ export const useStore = create<State>((set, get) => ({
     const seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0;
     const next = card.make(seed);
     set({ params: { ...next, mode: get().params.mode }, activePreset: id });
+  },
+  applyStem: (id) => {
+    const st = STEM_STYLES.find((s) => s.id === id);
+    if (st) set((s) => ({ params: { ...s.params, ...st.values }, activePreset: null }));
   },
   setPreview: (preview, error = null) => set({ preview, error }),
   setBuilding: (building) => set({ building }),

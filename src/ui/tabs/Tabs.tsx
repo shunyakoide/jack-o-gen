@@ -2,6 +2,7 @@ import { presetsFor } from '../../geometry/face/presets';
 import { useT } from '../../i18n';
 import { PART_KEYS, PART_KIND, type TabId } from '../../model/params';
 import { useStore } from '../../state/store';
+import { matchStem, STEM_STYLES } from '../../state/stems';
 import { FaceEditor } from '../face-editor/FaceEditor';
 import { ParamGroup } from '../ParamGroup';
 import { ExportPanel } from './ExportPanel';
@@ -14,8 +15,26 @@ function ShapeTab() {
     <>
       <ParamGroup group="body" title />
       <ParamGroup group="ribs" title />
-      <ParamGroup group="stem" title />
+      <ParamGroup group="stem" title>
+        <StemPicker />
+      </ParamGroup>
     </>
+  );
+}
+
+function StemPicker() {
+  const t = useT();
+  const current = useStore((s) => matchStem(s.params));
+  const apply = useStore((s) => s.applyStem);
+  return (
+    <div className="stem-grid">
+      {STEM_STYLES.map((st) => (
+        <button key={st.id} className={`stem-card ${current === st.id ? 'on' : ''}`} onClick={() => apply(st.id)}>
+          <span aria-hidden>{st.icon}</span>
+          {t(`stem.${st.id}`)}
+        </button>
+      ))}
+    </div>
   );
 }
 
