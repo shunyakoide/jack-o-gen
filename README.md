@@ -57,8 +57,8 @@ Cloudflare ダッシュボード → Workers & Pages → Pages → 「Git に接
 公開ドメインが決まったら、ビルド環境の `SITE_URL` に `https://公開ドメイン` を設定してください。
 ローカルでは `.env.example` を `.env.local` にコピーして設定できます。
 ビルド時に OG 画像・X カード画像の絶対 URL、`og:url`、canonical を HTML に埋め込みます。
-Cloudflare Pages では未設定時に `CF_PAGES_URL` を使用します。独自ドメインを使う場合は
-`SITE_URL` を明示してから再ビルドしてください。
+`SITE_URL` が未設定だと `og:url` と canonical は出力しません。Cloudflare Pages の `CF_PAGES_URL` は
+デプロイごとに変わる URL なので、OG 画像の参照先にだけ使います。
 両方未設定のローカル表示では画像を相対 URL で参照し、canonical は出力しません。
 SNS 上での表示確認は公開後に行ってください。
 

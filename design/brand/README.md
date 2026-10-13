@@ -40,4 +40,4 @@ OG 生成指示の要点: 選定済みパンプキンの形と片側が上がっ
 - [Vite HTML transform hook](https://vite.dev/guide/api-plugin.html#transformindexhtml)
 - [Cloudflare Pages build environment](https://developers.cloudflare.com/pages/configuration/build-configuration/)
 
-公開 URL は未定。`SITE_URL`（または Cloudflare Pages の `CF_PAGES_URL`）をビルド時に使用する。
+公開 URL は未定。`SITE_URL` をビルド時に使用する（未設定時は OG 画像だけ Cloudflare Pages の `CF_PAGES_URL` を使い、canonical は出さない）。
