@@ -1,11 +1,21 @@
 // テスト用の計測ヘルパー：出力メッシュを実際に切って寸法を測る。
 import { buildBody, EXPORT_RES, PREVIEW_RES } from '../src/geometry/body';
-import type { BuildResult } from '../src/geometry/build';
+import { buildPumpkin, type BuildResult, type Quality } from '../src/geometry/build';
 import type { Manifold, Wasm } from '../src/geometry/manifold';
 import { buildStem } from '../src/geometry/stem';
 import type { Params } from '../src/model/params';
 
 type Pt = [number, number];
+
+const builds = new Map<string, BuildResult>();
+
+/** 同じ入力のビルドはファイル内で 1 回だけ行う（結果は読み取り専用で使う） */
+export function cachedBuild(wasm: Wasm, p: Params, q: Quality): BuildResult {
+  const key = q + JSON.stringify(p);
+  let r = builds.get(key);
+  if (!r) builds.set(key, (r = buildPumpkin(wasm, p, q)));
+  return r;
+}
 
 export function solidOf(wasm: Wasm, positions: Float32Array, indices: Uint32Array): Manifold {
   return new wasm.Manifold(new wasm.Mesh({ numProp: 3, vertProperties: positions, triVerts: indices }));

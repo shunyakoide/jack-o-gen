@@ -14,6 +14,7 @@ Tuned for a Bambu Lab A1 (256 mm bed) with a 0.4 mm nozzle and PLA.
 npm install
 npm run dev        # dev server at http://localhost:5173
 npm test           # geometry and manifold tests (vitest, manifold-3d running in Node)
+npm run test:fast  # skips the export-resolution and random-shape suites
 npm run build      # type check and production build into dist/
 ```
 

@@ -5,7 +5,8 @@ Target: Bambu Lab A1 (256 mm bed), 0.4 mm nozzle, PLA. Public launch ~10/24. Dep
 
 ## Commands
 - `npm run dev` — Vite dev server (http://localhost:5173)
-- `npm test` — vitest (geometry + manifold checks for every preset/stem/mode, URL round-trip)
+- `npm test` — vitest (geometry + manifold checks for every preset/stem/mode, URL round-trip). Heavy suites are split into separate files so they run in parallel.
+- `npm run test:fast` — same but skips `*.slow.test.ts` (export resolution, 20 random shapes)
 - `npm run build` — `tsc -b && vite build`
 
 ## Stack

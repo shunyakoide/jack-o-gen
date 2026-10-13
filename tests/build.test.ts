@@ -1,18 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { buildBody, EXPORT_RES, PREVIEW_RES } from '../src/geometry/body';
-import { buildPumpkin } from '../src/geometry/build';
+import { buildBody, PREVIEW_RES } from '../src/geometry/body';
+import type { Quality } from '../src/geometry/build';
 import { loadManifold } from '../src/geometry/manifold';
-import { stemSeatRadius } from '../src/geometry/stem';
-import { toBinaryStl } from '../src/geometry/stl';
 import { defaultParams, type Params } from '../src/model/params';
 import { PRESET_CARDS } from '../src/state/presets';
 import { matchStem, STEM_STYLES } from '../src/state/stems';
 import { decodeParams, encodeParams } from '../src/state/url';
+import { cachedBuild } from './fit-helpers';
 
 const wasm = await loadManifold();
 
-function summary(p: Params, q: 'draft' | 'preview' | 'export' = 'preview') {
-  const r = buildPumpkin(wasm, p, q);
+function summary(p: Params, q: Quality = 'preview') {
+  const r = cachedBuild(wasm, p, q);
   const bad = r.checks.filter((c) => c.level !== 'green').map((c) => `${c.level}:${c.id}:${c.detail}`);
   return { r, bad };
 }
@@ -67,15 +66,6 @@ describe('buildPumpkin', () => {
     });
   }
 
-  it('ランダム 20 形状がすべて manifold', () => {
-    const random = PRESET_CARDS.find((c) => c.id === 'random')!;
-    for (let s = 1; s <= 20; s++) {
-      const { r } = summary(random.make(s * 7919));
-      const m = r.checks.find((c) => c.id === 'manifold')!;
-      expect(m.level, `seed ${s}: ${m.detail}`).toBe('green');
-    }
-  });
-
   it('draft（操作中プレビュー）でも全プリセットが manifold', () => {
     for (const card of PRESET_CARDS) {
       const { r } = summary(card.make(42), 'draft');
@@ -98,23 +88,15 @@ describe('buildPumpkin', () => {
     }
   });
 
-  it('書き出し解像度でも manifold、STL が書ける', () => {
-    const { r } = summary(defaultParams(), 'export');
-    console.log('export', r.stats);
-    expect(r.checks.find((c) => c.id === 'manifold')!.level).toBe('green');
-    const stl = toBinaryStl(r.positions, r.indices);
-    expect(stl.byteLength).toBe(84 + 50 * r.stats.triangles);
-  });
-
   it('大きすぎるとサイズチェックが赤', () => {
-    const { r } = summary({ ...defaultParams(), diameter: 240, height: 2.4, stemHeight: 0.4 });
+    const { r } = summary({ ...defaultParams(), diameter: 240, height: 2.4, stemHeight: 0.4 }, 'draft');
     expect(r.checks.find((c) => c.id === 'bed')!.level).toBe('red');
   });
 
   it('瞳つきの目は島にブリッジが入る', () => {
     const p = defaultParams();
     p.face.eyeL.preset = 'pupil';
-    const { r } = summary(p);
+    const { r } = summary(p, 'draft');
     expect(r.checks.find((c) => c.id === 'island')?.level).toBe('green');
     expect(r.checks.find((c) => c.id === 'manifold')!.level).toBe('green');
   });
@@ -123,59 +105,8 @@ describe('buildPumpkin', () => {
     const p = defaultParams();
     p.face.eyeL = { ...p.face.eyeL, x: -1.2, w: 2 };
     p.face.symmetric = true;
-    const { r } = summary(p);
+    const { r } = summary(p, 'draft');
     expect(r.checks.find((c) => c.id === 'link')!.level).toBe('yellow');
-  });
-});
-
-function solidOf(positions: Float32Array, indices: Uint32Array) {
-  return new wasm.Manifold(new wasm.Mesh({ numProp: 3, vertProperties: positions, triVerts: indices }));
-}
-
-describe('ヘタ差し込み式', () => {
-  for (const card of PRESET_CARDS) {
-    it(`${card.id}：本体とヘタがそれぞれ単一の manifold で、差しても干渉しない`, () => {
-      const p: Params = { ...card.make(42), stemAttach: 'peg' };
-      const { r } = summary(p);
-      expect(r.checks.find((c) => c.id === 'manifold')!.level).toBe('green');
-      const st = r.stem!;
-      const body = solidOf(r.positions, r.indices);
-      const stem = solidOf(st.positions, st.indices);
-      expect(stem.status()).toBe('NoError');
-      expect(stem.decompose().length).toBe(1);
-      let zMin = Infinity;
-      for (let i = 2; i < st.positions.length; i += 3) zMin = Math.min(zMin, st.positions[i]);
-      expect(zMin).toBeCloseTo(st.seatZ, 3);
-      expect(body.intersect(stem).volume()).toBeLessThan(0.5);
-    });
-  }
-
-  it('draft でも本体・ヘタとも単一の manifold', () => {
-    for (const card of PRESET_CARDS) {
-      const { r } = summary({ ...card.make(42), stemAttach: 'peg' }, 'draft');
-      expect(r.checks.find((c) => c.id === 'manifold')!.level, card.id).toBe('green');
-      expect(solidOf(r.stem!.positions, r.stem!.indices).decompose().length, card.id).toBe(1);
-    }
-  });
-
-  it('ランタンの座ぐりの下には壁厚ぶんの肉が残る（空洞を突き破らない）', () => {
-    // draft は内天井の円錐カットを省くので対象外（内側だけの見た目の差）
-    for (const card of PRESET_CARDS) {
-      for (const q of card.id === 'classic' ? (['preview', 'export'] as const) : (['preview'] as const)) {
-        const p: Params = { ...card.make(42), stemAttach: 'peg' };
-        const { r } = summary(p, q);
-        const rf = stemSeatRadius(p);
-        const zSeat = r.stem!.seatZ;
-        // 座面のすぐ下、厚さ wall の円盤が全部埋まっている
-        const disc = wasm.Manifold.cylinder(p.wall - 0.05, rf, rf, 48).translate([0, 0, zSeat - p.wall]);
-        const filled = solidOf(r.positions, r.indices).intersect(disc).volume();
-        expect(filled / disc.volume(), `${card.id} ${q}`).toBeGreaterThan(0.999);
-      }
-    }
-  });
-
-  it('一体式ではヘタ単体を返さない', () => {
-    expect(summary(defaultParams()).r.stem).toBeUndefined();
   });
 });
 
@@ -191,4 +122,3 @@ describe('URL', () => {
   });
 });
 
-void EXPORT_RES;
