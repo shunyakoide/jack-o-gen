@@ -36,22 +36,33 @@ function bezierTangent(p: number[][], t: number): number[] {
   return v.map((x) => x / l);
 }
 
-export function buildStem(p: Params, zTop: number, fine: boolean): TriMesh {
+/** ヘタの芯線（ベジェ制御点）と寸法。buildStem と差し込み穴の計算で共有する */
+function stemFrame(p: Params, zTop: number) {
   const D = p.diameter;
   const r0 = p.stemRadius * D * 0.5;
   const sink = Math.max(3, r0 * 0.6 + p.dimpleDepth * D * 0.15);
   const H = p.stemHeight * D + sink;
   const z0 = zTop - sink;
-  const ts = sink / H; // 本体表面の位置（パス上の比率）
   const bend = p.stemBend;
-  const dir = hash01(p.seed, 55) * Math.PI * 2;
-
   const ctrl = [
     [0, 0, z0],
     [0, 0, z0 + H * 0.45],
     [bend * H * 0.3, 0, z0 + H * 0.85],
     [bend * H * 0.85, 0, z0 + H * (1 - 0.3 * bend)],
   ];
+  const ts = sink / H; // 本体表面の位置（パス上の比率）
+  /** パス上の比率 t での断面の拡大率（単位断面 → mm） */
+  const radius = (t: number) => {
+    const above = Math.max(0, t - ts) / (1 - ts);
+    const flare = 1 + p.stemFlare * 0.9 * Math.exp(-((above / 0.14) ** 2));
+    return r0 * (1 - p.stemTaper * above) * flare;
+  };
+  return { ctrl, ts, radius, z1: ctrl[3][2] };
+}
+
+export function buildStem(p: Params, zTop: number, fine: boolean): TriMesh {
+  const { ctrl, ts, radius } = stemFrame(p, zTop);
+  const dir = hash01(p.seed, 55) * Math.PI * 2;
   const K = fine ? p.stemSides * 12 : p.stemSides * 6;
   const S = fine ? 48 : 18;
   const sec = stemSection(p.stemSides, p.stemStar, K);
@@ -73,10 +84,8 @@ export function buildStem(p: Params, zTop: number, fine: boolean): TriMesh {
     const T = bezierTangent(ctrl, t);
     // B = +Y（パスは XZ 平面内）、N = B × T
     const N = [T[2], 0, -T[0]];
-    const above = Math.max(0, t - ts) / (1 - ts);
-    const flare = 1 + p.stemFlare * 0.9 * Math.exp(-((above / 0.14) ** 2));
-    const r = r0 * (1 - p.stemTaper * above) * flare;
-    const tw = twist * above;
+    const r = radius(t);
+    const tw = (twist * Math.max(0, t - ts)) / (1 - ts);
     for (let k = 0; k < K; k++) {
       const a = (2 * Math.PI * k) / K + tw;
       const rr = r * sec[k];
@@ -107,24 +116,61 @@ export function buildStem(p: Params, zTop: number, fine: boolean): TriMesh {
   return { positions: pos, indices: new Uint32Array(tris) };
 }
 
-/** ヘタ先端の高さ（造形高さの見積もり用） */
-export function stemTopZ(p: Params, zTop: number): number {
-  const D = p.diameter;
-  const r0 = p.stemRadius * D * 0.5;
-  const sink = Math.max(3, r0 * 0.6 + p.dimpleDepth * D * 0.15);
-  const H = p.stemHeight * D + sink;
-  return zTop - sink + H * (1 - 0.3 * p.stemBend);
+// はめ合いの寸法 [mm]。試し刷りの結果に合わせて調整するのはここだけ
+export const FIT = {
+  /** ピンと穴の半径方向のすき間（押し込み嵌合） */
+  pinClear: 0.15,
+  /** ヘタの足元外形と本体の座ぐりの半径方向のすき間 */
+  seatGap: 0.8,
+  /** 穴の深さの余裕（ピン先端より奥） */
+  holeExtra: 0.6,
+  /** ヘタ側の穴の入口の 45° 面取り（1 層目のつぶれ＝エレファントフット対策） */
+  chamfer: 0.4,
+  /** 穴のまわりに残すヘタの肉厚（0.4 mm ノズルで 2 周） */
+  minWall: 0.8,
+  /** ピン半径の上限・下限 */
+  pinMax: 3,
+  pinMin: 1.2,
+};
+
+/** 座ぐりの半径：本体表面の位置ではフレアが最大（1 + 0.9·flare） */
+export function stemSeatRadius(p: Params): number {
+  const sec = stemSection(p.stemSides, p.stemStar, p.stemSides * 12);
+  return p.stemRadius * p.diameter * 0.5 * (1 + p.stemFlare * 0.9) * Math.max(...sec) + FIT.seatGap;
 }
 
-/** 差し込み式ヘタの寸法 [mm]：座ぐり半径 rf、ピン半径 rp、ピン高さ hp */
-export function stemPeg(p: Params): { rf: number; rp: number; hp: number } {
-  const D = p.diameter;
-  const sec = stemSection(p.stemSides, p.stemStar, p.stemSides * 12);
-  // 本体表面の位置ではフレアが最大（1 + 0.9·flare）
-  const rBase = p.stemRadius * D * 0.5 * (1 + p.stemFlare * 0.9);
-  return {
-    rf: rBase * Math.max(...sec) + 0.5,
-    rp: Math.min(3, Math.max(1.5, 0.45 * rBase * Math.min(...sec))),
-    hp: Math.min(6, 0.4 * p.stemHeight * D),
+/**
+ * 差し込みピンの半径 rp・高さ hp [mm]。座面 zSeat から穴の上端（＋天井 minWall）までの各高さで、
+ * ヘタ断面の内接半径（テーパー・星形込み）から曲がりによる芯のずれを引き、穴＋面取り＋minWall が収まる最大の rp を選ぶ。
+ * 既定の長さで pinMin が入らなければ短くして試し、それでも入らなければ fits=false（最小ピンで出力）
+ */
+export function stemPin(p: Params, zTop: number, zSeat: number): { rp: number; hp: number; fits: boolean } {
+  const { ctrl, radius, z1 } = stemFrame(p, zTop);
+  const inR = Math.min(...stemSection(p.stemSides, p.stemStar, p.stemSides * 12));
+  // 芯線を細かくたどって (z, 軸から外形までの最短距離) を集める。断面の傾きは無視（水平断面は傾けた断面より太いので安全側）
+  const prof: [number, number][] = [];
+  for (let i = 0; i <= 400; i++) {
+    const t = i / 400;
+    const c = bezier(ctrl, t);
+    prof.push([c[2], radius(t) * inR - Math.abs(c[0])]);
+  }
+  // メッシュの折れ線近似で細る分の余裕
+  const margin = 0.05;
+  const rpFor = (hp: number) => {
+    const top = zSeat + hp + FIT.holeExtra;
+    if (top + FIT.minWall > z1) return -Infinity;
+    let rp = FIT.pinMax;
+    for (const [z, d] of prof) {
+      if (z < zSeat || z > top + FIT.minWall) continue;
+      const ch = Math.max(0, FIT.chamfer - (z - zSeat));
+      rp = Math.min(rp, d - margin - FIT.minWall - FIT.pinClear - ch);
+    }
+    return rp;
   };
+  const hp0 = Math.min(6, 0.4 * p.stemHeight * p.diameter);
+  for (let hp = hp0; hp >= Math.min(hp0, 2); hp -= 0.5) {
+    const rp = rpFor(hp);
+    if (rp >= FIT.pinMin) return { rp, hp, fits: true };
+  }
+  return { rp: FIT.pinMin, hp: Math.min(hp0, 2), fits: false };
 }

@@ -1,4 +1,5 @@
 // 全パラメータを URL クエリに入れる／URL から読む。
+import { clampFace } from '../geometry/face/layout';
 import {
   clampNum,
   defaultParams,
@@ -56,5 +57,6 @@ export function decodeParams(search: string): Params | null {
     PART_KEYS.forEach((k, i) => (face[k] = decodePart(parts[i + 1], p.face[k])));
     p.face = face;
   }
+  p.face = clampFace(p);
   return p;
 }

@@ -2,6 +2,8 @@
 
 import type { Params } from '../model/params';
 import type { FaceCheck } from './face/layout';
+import type { Vec3 } from './layout';
+import { FIT } from './stem';
 
 export type CheckLevel = 'red' | 'yellow' | 'green';
 
@@ -17,12 +19,15 @@ export interface CheckInput {
   status: string;
   empty: boolean;
   components: number;
-  stats: { width: number; depth: number; height: number; contactDiameter: number; maxDiameter: number };
+  stats: { contactDiameter: number; maxDiameter: number };
+  /** ベッド上の占有寸法 [x, y, z]（差し込み式は本体＋横に並べたヘタ） */
+  bed: Vec3;
+  /** 差し込み式のピン寸法。fits=false はヘタが細すぎて最小ピンでも肉厚が残らない */
+  peg: { rp: number; hp: number; fits: boolean } | null;
   face: FaceCheck;
 }
 
 const BED = 250;
-const MIN_WALL = 1.2;
 
 export function runChecks(p: Params, c: CheckInput): { items: CheckItem[]; level: CheckLevel } {
   const items: CheckItem[] = [];
@@ -35,20 +40,22 @@ export function runChecks(p: Params, c: CheckInput): { items: CheckItem[]; level
     vars: { status: c.status, n: c.components },
   });
 
-  const maxDim = Math.max(c.stats.width, c.stats.depth, c.stats.height);
+  const [w, d, h] = c.bed;
   items.push({
     id: 'bed',
-    level: maxDim <= BED ? 'green' : 'red',
-    detail: 'size',
-    vars: { bed: BED, w: c.stats.width.toFixed(0), d: c.stats.depth.toFixed(0), h: c.stats.height.toFixed(0) },
+    level: Math.max(w, d, h) <= BED ? 'green' : 'red',
+    detail: c.peg ? 'pair' : 'size',
+    vars: { bed: BED, w: w.toFixed(0), d: d.toFixed(0), h: h.toFixed(0) },
   });
 
-  items.push({
-    id: 'wall',
-    level: p.wall >= MIN_WALL ? 'green' : 'red',
-    detail: 'hollow',
-    vars: { min: MIN_WALL, wall: p.wall.toFixed(1) },
-  });
+  if (c.peg) {
+    items.push({
+      id: 'peg',
+      level: c.peg.fits ? 'green' : 'yellow',
+      detail: c.peg.fits ? 'ok' : 'thin',
+      vars: { d: (c.peg.rp * 2).toFixed(1), h: c.peg.hp.toFixed(1), wall: FIT.minWall },
+    });
+  }
 
   const ratio = c.stats.contactDiameter / c.stats.maxDiameter;
   const ledFits = p.led + 2 * p.wall + 2 <= c.stats.contactDiameter;
