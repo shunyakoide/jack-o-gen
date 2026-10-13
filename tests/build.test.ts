@@ -48,7 +48,7 @@ describe('外形', () => {
 describe('buildPumpkin', () => {
   for (const card of PRESET_CARDS) {
     for (const mode of ['lantern', 'sealed'] as const) {
-      it(`${card.label}（${mode}）は単一の manifold`, () => {
+      it(`${card.id} (${mode})は単一の manifold`, () => {
         const p = { ...card.make(42), mode };
         const { r, bad } = summary(p);
         if (bad.length) console.log(card.id, mode, bad);
@@ -78,7 +78,7 @@ describe('buildPumpkin', () => {
   });
 
   it('大きすぎるとサイズチェックが赤', () => {
-    const { r } = summary({ ...defaultParams(), diameter: 240, topH: 1.3, bottomH: 1.1, stemHeight: 0.4 });
+    const { r } = summary({ ...defaultParams(), diameter: 240, height: 2.4, stemHeight: 0.4 });
     expect(r.checks.find((c) => c.id === 'bed')!.level).toBe('red');
   });
 

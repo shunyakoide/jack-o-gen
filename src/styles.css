@@ -12,7 +12,7 @@
   --red: #ef4b4b;
   --radius: 10px;
   color-scheme: dark;
-  font-family: 'Hiragino Sans', 'Noto Sans JP', system-ui, sans-serif;
+  font-family: system-ui, -apple-system, 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
   font-size: 14px;
   color: var(--text);
   background: var(--bg);
@@ -168,3 +168,9 @@ input[type='range'] { width: 100%; accent-color: var(--accent); }
   .presets { padding-top: 2px; }
   .topbar h1 { font-size: 15px; }
 }
+
+.group { display: flex; flex-direction: column; gap: 12px; }
+.group + .group { border-top: 1px solid var(--line); padding-top: 12px; }
+.group-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.size-line { margin: 0; color: var(--muted); }
+.ghost.lang { font-size: 12px; padding: 5px 9px; }

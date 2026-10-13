@@ -26,10 +26,10 @@ export interface FaceParams {
 
 export interface NumParams {
   seed: number;
-  // 形
+  // 本体
   diameter: number;
-  topH: number;
-  bottomH: number;
+  /** 高さ／半径（上下の合計） */
+  height: number;
   superE: number;
   egg: number;
   wobble: number;
@@ -68,61 +68,66 @@ export interface Params extends NumParams {
   face: FaceParams;
 }
 
-export type TabId = 'shape' | 'ribs' | 'stem' | 'face' | 'interior' | 'export';
+export type TabId = 'shape' | 'face' | 'print';
+/** 形タブ内の小見出し */
+export type GroupId = 'body' | 'ribs' | 'stem' | 'print';
 
 export interface NumDef {
   key: keyof NumParams;
   /** URLクエリのキー（短縮） */
   q: string;
-  label: string;
-  tab: TabId;
+  group: GroupId;
   min: number;
   max: number;
   step: number;
   def: number;
   unit?: string;
+  /** 「More」に畳む */
   advanced?: boolean;
+  /** UI に出さない（プリセット・URL からのみ変わる） */
+  hidden?: boolean;
   int?: boolean;
 }
 
 export const NUM_DEFS: NumDef[] = [
-  { key: 'seed', q: 's', label: 'シード', tab: 'shape', min: 1, max: 9999, step: 1, def: 1031, int: true, advanced: true },
+  { key: 'diameter', q: 'D', group: 'body', min: 60, max: 240, step: 1, def: 120, unit: 'mm' },
+  { key: 'height', q: 'H', group: 'body', min: 0.8, max: 2.6, step: 0.01, def: 1.4 },
+  { key: 'wobble', q: 'wb', group: 'body', min: 0, max: 0.12, step: 0.005, def: 0.01, advanced: true },
+  { key: 'superE', q: 'e', group: 'body', min: 1.6, max: 4, step: 0.05, def: 2.3, advanced: true },
+  { key: 'egg', q: 'k', group: 'body', min: -0.3, max: 0.3, step: 0.01, def: 0.05, advanced: true },
+  { key: 'dimpleDepth', q: 'dd', group: 'body', min: 0, max: 0.2, step: 0.005, def: 0.07, advanced: true },
+  { key: 'flat', q: 'fl', group: 'body', min: 0.35, max: 0.7, step: 0.01, def: 0.45, advanced: true },
+  { key: 'seed', q: 's', group: 'body', min: 1, max: 9999, step: 1, def: 1031, int: true, advanced: true },
+  { key: 'dimpleWidth', q: 'dw', group: 'body', min: 0.15, max: 0.8, step: 0.01, def: 0.35, hidden: true },
 
-  { key: 'diameter', q: 'D', label: '直径', tab: 'shape', min: 60, max: 240, step: 1, def: 120, unit: 'mm' },
-  { key: 'topH', q: 'th', label: '上半分の高さ', tab: 'shape', min: 0.4, max: 1.4, step: 0.01, def: 0.72 },
-  { key: 'bottomH', q: 'bh', label: '下半分の高さ', tab: 'shape', min: 0.4, max: 1.2, step: 0.01, def: 0.68 },
-  { key: 'superE', q: 'e', label: '角ばり（超楕円指数）', tab: 'shape', min: 1.6, max: 4, step: 0.05, def: 2.3, advanced: true },
-  { key: 'egg', q: 'k', label: '卵形', tab: 'shape', min: -0.3, max: 0.3, step: 0.01, def: 0.05, advanced: true },
-  { key: 'wobble', q: 'wb', label: '歪み', tab: 'shape', min: 0, max: 0.12, step: 0.005, def: 0.01 },
-  { key: 'flat', q: 'fl', label: '接地径（最大径比）', tab: 'shape', min: 0.35, max: 0.7, step: 0.01, def: 0.45, advanced: true },
-  { key: 'dimpleDepth', q: 'dd', label: 'ヘタ周りのくぼみ', tab: 'shape', min: 0, max: 0.2, step: 0.005, def: 0.07 },
-  { key: 'dimpleWidth', q: 'dw', label: 'くぼみの広さ', tab: 'shape', min: 0.15, max: 0.8, step: 0.01, def: 0.35, advanced: true },
+  { key: 'ribs', q: 'N', group: 'ribs', min: 4, max: 24, step: 1, def: 10, int: true },
+  { key: 'ribDepth', q: 'rd', group: 'ribs', min: 0, max: 0.25, step: 0.005, def: 0.09 },
+  { key: 'twist', q: 't', group: 'ribs', min: -120, max: 120, step: 1, def: 0, unit: '°', advanced: true },
+  { key: 'ribSharp', q: 'p', group: 'ribs', min: 0.3, max: 4, step: 0.05, def: 1.0, advanced: true },
+  { key: 'ribJitter', q: 'j', group: 'ribs', min: 0, max: 0.15, step: 0.005, def: 0.04, advanced: true },
+  { key: 'ribSkew', q: 'sk', group: 'ribs', min: 0.5, max: 2, step: 0.01, def: 1, hidden: true },
+  { key: 'ribFade', q: 'q', group: 'ribs', min: 0.1, max: 3, step: 0.05, def: 0.7, hidden: true },
 
-  { key: 'ribs', q: 'N', label: '筋の数', tab: 'ribs', min: 4, max: 24, step: 1, def: 10, int: true },
-  { key: 'ribDepth', q: 'rd', label: '溝の深さ', tab: 'ribs', min: 0, max: 0.25, step: 0.005, def: 0.09 },
-  { key: 'ribSharp', q: 'p', label: '溝の形（小:V ↔ 大:U）', tab: 'ribs', min: 0.3, max: 4, step: 0.05, def: 1.0 },
-  { key: 'twist', q: 't', label: 'ねじれ', tab: 'ribs', min: -120, max: 120, step: 1, def: 0, unit: '°' },
-  { key: 'ribSkew', q: 'sk', label: '溝の非対称', tab: 'ribs', min: 0.5, max: 2, step: 0.01, def: 1, advanced: true },
-  { key: 'ribFade', q: 'q', label: '極での溝の消え方', tab: 'ribs', min: 0.1, max: 3, step: 0.05, def: 0.7, advanced: true },
-  { key: 'ribJitter', q: 'j', label: '筋ごとの個体差', tab: 'ribs', min: 0, max: 0.15, step: 0.005, def: 0.04, advanced: true },
+  { key: 'stemHeight', q: 'sh', group: 'stem', min: 0.05, max: 0.45, step: 0.005, def: 0.2 },
+  { key: 'stemBend', q: 'sb', group: 'stem', min: 0, max: 0.8, step: 0.01, def: 0.3 },
+  { key: 'stemRadius', q: 'sr', group: 'stem', min: 0.03, max: 0.14, step: 0.002, def: 0.07, advanced: true },
+  { key: 'stemTwist', q: 'sw', group: 'stem', min: -180, max: 180, step: 1, def: 40, unit: '°', advanced: true },
+  { key: 'stemTaper', q: 'st', group: 'stem', min: 0, max: 0.7, step: 0.01, def: 0.3, hidden: true },
+  { key: 'stemSides', q: 'sn', group: 'stem', min: 4, max: 9, step: 1, def: 5, int: true, hidden: true },
+  { key: 'stemStar', q: 'ss', group: 'stem', min: 0, max: 0.45, step: 0.01, def: 0.15, hidden: true },
+  { key: 'stemFlare', q: 'sf', group: 'stem', min: 0, max: 1, step: 0.01, def: 0.5, hidden: true },
 
-  { key: 'stemHeight', q: 'sh', label: 'ヘタの高さ', tab: 'stem', min: 0.05, max: 0.45, step: 0.005, def: 0.2 },
-  { key: 'stemRadius', q: 'sr', label: 'ヘタの太さ', tab: 'stem', min: 0.03, max: 0.14, step: 0.002, def: 0.07 },
-  { key: 'stemBend', q: 'sb', label: '曲がり', tab: 'stem', min: 0, max: 0.8, step: 0.01, def: 0.3 },
-  { key: 'stemSides', q: 'sn', label: '断面の角数', tab: 'stem', min: 4, max: 9, step: 1, def: 5, int: true, advanced: true },
-  { key: 'stemStar', q: 'ss', label: '星形の深さ', tab: 'stem', min: 0, max: 0.45, step: 0.01, def: 0.15, advanced: true },
-  { key: 'stemTaper', q: 'st', label: 'テーパー', tab: 'stem', min: 0, max: 0.7, step: 0.01, def: 0.3, advanced: true },
-  { key: 'stemTwist', q: 'sw', label: 'ねじれ', tab: 'stem', min: -180, max: 180, step: 1, def: 40, unit: '°', advanced: true },
-  { key: 'stemFlare', q: 'sf', label: '根元の広がり', tab: 'stem', min: 0, max: 1, step: 0.01, def: 0.5, advanced: true },
+  { key: 'arch', q: 'ar', group: 'print', min: 0, max: 1, step: 1, def: 1, int: true, hidden: true },
+  { key: 'bridge', q: 'br', group: 'print', min: 1.5, max: 5, step: 0.1, def: 2, unit: 'mm', hidden: true },
 
-  { key: 'arch', q: 'ar', label: '穴の上辺を尖頭アーチにする（0で無効）', tab: 'face', min: 0, max: 1, step: 1, def: 1, int: true, advanced: true },
-  { key: 'bridge', q: 'br', label: '島のブリッジ幅', tab: 'face', min: 1.5, max: 5, step: 0.1, def: 2, unit: 'mm', advanced: true },
-
-  { key: 'wall', q: 'w', label: '肉厚', tab: 'interior', min: 1.2, max: 4, step: 0.1, def: 1.6, unit: 'mm' },
-  { key: 'led', q: 'L', label: 'LED用開口の直径', tab: 'interior', min: 40, max: 80, step: 1, def: 44, unit: 'mm' },
-  { key: 'floor', q: 'fb', label: '底の厚み', tab: 'interior', min: 1.2, max: 5, step: 0.1, def: 2, unit: 'mm', advanced: true },
-  { key: 'engrave', q: 'eg', label: '彫り込み深さ（密閉）', tab: 'interior', min: 1, max: 2, step: 0.1, def: 1.5, unit: 'mm' },
+  { key: 'wall', q: 'w', group: 'print', min: 1.2, max: 4, step: 0.1, def: 1.6, unit: 'mm' },
+  { key: 'led', q: 'L', group: 'print', min: 40, max: 80, step: 1, def: 44, unit: 'mm' },
+  { key: 'engrave', q: 'eg', group: 'print', min: 1, max: 2, step: 0.1, def: 1.5, unit: 'mm' },
+  { key: 'floor', q: 'fb', group: 'print', min: 1.2, max: 5, step: 0.1, def: 2, unit: 'mm', hidden: true },
 ];
+
+/** 上半分の高さの割合（残りが下半分） */
+export const TOP_SHARE = 0.515;
 
 export const NUM_DEF_BY_KEY = Object.fromEntries(NUM_DEFS.map((d) => [d.key, d])) as Record<keyof NumParams, NumDef>;
 

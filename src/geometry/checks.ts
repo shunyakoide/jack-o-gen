@@ -8,8 +8,9 @@ export type CheckLevel = 'red' | 'yellow' | 'green';
 export interface CheckItem {
   id: string;
   level: CheckLevel;
-  label: string;
+  /** 表示文のキー（UI 側で翻訳する）。label は `check.<id>`、detail は `check.<id>.<detail>` */
   detail: string;
+  vars: Record<string, string | number>;
 }
 
 export interface CheckInput {
@@ -30,28 +31,24 @@ export function runChecks(p: Params, c: CheckInput): { items: CheckItem[]; level
   const okMesh = c.status === 'NoError' && !c.empty;
   items.push({
     id: 'manifold',
-    level: okMesh ? (c.components === 1 ? 'green' : 'red') : 'red',
-    label: 'メッシュの健全性（manifold）',
-    detail: !okMesh
-      ? `メッシュが壊れています（${c.status}）`
-      : c.components === 1
-        ? '閉じた1つの立体です'
-        : `${c.components}個の部品に分かれています（浮いた部品があります）`,
+    level: okMesh && c.components === 1 ? 'green' : 'red',
+    detail: !okMesh ? 'broken' : c.components === 1 ? 'ok' : 'parts',
+    vars: { status: c.status, n: c.components },
   });
 
   const maxDim = Math.max(c.stats.width, c.stats.depth, c.stats.height);
   items.push({
     id: 'bed',
     level: maxDim <= BED ? 'green' : 'red',
-    label: `造形範囲（${BED}mm角）`,
-    detail: `${c.stats.width.toFixed(0)} × ${c.stats.depth.toFixed(0)} × ${c.stats.height.toFixed(0)} mm`,
+    detail: 'size',
+    vars: { bed: BED, w: c.stats.width.toFixed(0), d: c.stats.depth.toFixed(0), h: c.stats.height.toFixed(0) },
   });
 
   items.push({
     id: 'wall',
     level: !lantern || p.wall >= MIN_WALL ? 'green' : 'red',
-    label: `肉厚 ${MIN_WALL}mm以上`,
-    detail: lantern ? `肉厚 ${p.wall.toFixed(1)}mm（内側は法線方向にオフセット）` : '密閉モード（ソリッド）',
+    detail: lantern ? 'hollow' : 'solid',
+    vars: { min: MIN_WALL, wall: p.wall.toFixed(1) },
   });
 
   const ratio = c.stats.contactDiameter / c.stats.maxDiameter;
@@ -59,45 +56,26 @@ export function runChecks(p: Params, c: CheckInput): { items: CheckItem[]; level
   items.push({
     id: 'base',
     level: ratio >= 0.35 && ledFits ? 'green' : 'red',
-    label: '接地面',
-    detail:
-      `接地径 ${c.stats.contactDiameter.toFixed(0)}mm（最大径の${Math.round(ratio * 100)}%）` +
-      (lantern ? (ledFits ? `／LED開口 φ${p.led}mm` : '／LED開口が底に収まりません') : ''),
+    detail: !lantern ? 'plain' : ledFits ? 'led' : 'ledTooBig',
+    vars: { d: c.stats.contactDiameter.toFixed(0), pct: Math.round(ratio * 100), led: p.led },
   });
 
   const f = c.face;
   if (f.holeCount > 0) {
-    const holeLevel: CheckLevel = f.tinyHoles > 0 || f.thinHoleArea > 1 ? 'yellow' : 'green';
     items.push({
       id: 'hole',
-      level: holeLevel,
-      label: '穴の幅 2mm以上',
-      detail:
-        f.tinyHoles > 0
-          ? `幅2mm未満の小さな穴が${f.tinyHoles}個あります（ふさがる可能性）`
-          : f.thinHoleArea > 1
-            ? `幅2mm未満の細い部分があります（約${f.thinHoleArea.toFixed(0)}mm²）`
-            : `${f.holeCount}個の穴はすべて幅2mm以上です`,
+      level: f.tinyHoles > 0 || f.thinHoleArea > 1 ? 'yellow' : 'green',
+      detail: f.tinyHoles > 0 ? 'tiny' : f.thinHoleArea > 1 ? 'thin' : 'ok',
+      vars: { n: f.tinyHoles || f.holeCount, area: f.thinHoleArea.toFixed(0) },
     });
-    const linkLevel: CheckLevel = f.mergedHoles > 0 || f.narrowBridgeArea > 1 ? 'yellow' : 'green';
     items.push({
       id: 'link',
-      level: linkLevel,
-      label: '穴と穴の間 3mm以上',
-      detail:
-        f.mergedHoles > 0
-          ? `間隔3mm未満の穴が${f.mergedHoles}か所あります（折れやすい）`
-          : f.narrowBridgeArea > 1
-            ? '歯などの連結部に3mm未満の細い部分があります'
-            : '連結部はすべて3mm以上です',
+      level: f.mergedHoles > 0 || f.narrowBridgeArea > 1 ? 'yellow' : 'green',
+      detail: f.mergedHoles > 0 ? 'merged' : f.narrowBridgeArea > 1 ? 'narrow' : 'ok',
+      vars: { n: f.mergedHoles },
     });
     if (f.islands > 0) {
-      items.push({
-        id: 'island',
-        level: 'green',
-        label: '島のブリッジ',
-        detail: `${f.islands}個の島に幅${p.bridge}mmのブリッジを自動で追加しました`,
-      });
+      items.push({ id: 'island', level: 'green', detail: 'added', vars: { n: f.islands, w: p.bridge } });
     }
   }
 

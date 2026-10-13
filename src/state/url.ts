@@ -33,7 +33,8 @@ function decodePart(s: string | undefined, def: FacePart): FacePart {
 
 export function encodeParams(p: Params): string {
   const q = new URLSearchParams();
-  for (const d of NUM_DEFS) q.set(d.q, fmt(p[d.key]));
+  // 既定値と同じ項目は省いて URL を短くする
+  for (const d of NUM_DEFS) if (fmt(p[d.key]) !== fmt(d.def)) q.set(d.q, fmt(p[d.key]));
   q.set('m', p.mode === 'lantern' ? 'l' : 's');
   q.set('f', [p.face.symmetric ? '1' : '0', ...PART_KEYS.map((k) => encodePart(p.face[k]))].join('_'));
   return q.toString();

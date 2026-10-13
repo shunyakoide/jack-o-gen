@@ -1,26 +1,27 @@
-import type { ReactNode } from 'react';
-import { NUM_DEFS, type NumParams, type TabId } from '../model/params';
+import { useT } from '../i18n';
+import { NUM_DEFS, type GroupId, type NumParams } from '../model/params';
 import { ParamSlider } from './ParamSlider';
 
-/** タブの基本項目を表示し、残りは「詳細」に畳む */
-export function ParamGroup({ tab, exclude = [], extraAdvanced }: { tab: TabId; exclude?: (keyof NumParams)[]; extraAdvanced?: ReactNode }) {
-  const defs = NUM_DEFS.filter((d) => d.tab === tab && !exclude.includes(d.key));
+/** グループの基本項目を並べ、残りは「More」に畳む */
+export function ParamGroup({ group, exclude = [], title }: { group: GroupId; exclude?: (keyof NumParams)[]; title?: boolean }) {
+  const t = useT();
+  const defs = NUM_DEFS.filter((d) => d.group === group && !d.hidden && !exclude.includes(d.key));
   const basic = defs.filter((d) => !d.advanced);
   const adv = defs.filter((d) => d.advanced);
   return (
-    <>
+    <section className="group">
+      {title && <h3 className="group-title">{t(`group.${group}`)}</h3>}
       {basic.map((d) => (
         <ParamSlider key={d.key} k={d.key} />
       ))}
-      {(adv.length > 0 || extraAdvanced) && (
+      {adv.length > 0 && (
         <details className="advanced">
-          <summary>詳細</summary>
+          <summary>{t('more')}</summary>
           {adv.map((d) => (
             <ParamSlider key={d.key} k={d.key} />
           ))}
-          {extraAdvanced}
         </details>
       )}
-    </>
+    </section>
   );
 }

@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from 'react';
 import { partPolygons } from '../../geometry/face/layout';
 import { applySymmetry, PART_KEYS, type FacePart, type PartKey } from '../../model/params';
 import { useStore } from '../../state/store';
+import { useT } from '../../i18n';
 
 const VB = { x: -95, y: -58, w: 190, h: 116 };
 
@@ -25,6 +26,7 @@ export function FaceEditor() {
   const selected = useStore((s) => s.selectedPart);
   const setPart = useStore((s) => s.setPart);
   const selectPart = useStore((s) => s.selectPart);
+  const t = useT();
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
 
@@ -103,7 +105,7 @@ export function FaceEditor() {
       onPointerUp={() => setDrag(null)}
       onPointerCancel={() => setDrag(null)}
       role="application"
-      aria-label="顔パーツの配置エディタ"
+      aria-label={t('faceEditor')}
     >
       <rect x={VB.x} y={VB.y} width={VB.w} height={VB.h} className="fe-bg" />
       {grooves.map((d, i) => (
@@ -114,8 +116,8 @@ export function FaceEditor() {
       {[-1, 1].map((s) => (
         <line key={s} x1={(s * Math.PI * R) / 2} x2={(s * Math.PI * R) / 2} y1={VB.y} y2={VB.y + VB.h} className="fe-side" />
       ))}
-      <text x={VB.x + 3} y={VB.y + 7} className="fe-label">展開図（正面）</text>
-      <text x={(Math.PI * R) / 2 - 2} y={VB.y + 7} className="fe-label" textAnchor="end">側面→</text>
+      <text x={VB.x + 3} y={VB.y + 7} className="fe-label">{t('faceMap')}</text>
+      <text x={(Math.PI * R) / 2 - 2} y={VB.y + 7} className="fe-label" textAnchor="end">{t('faceSide')}</text>
       {PART_KEYS.map((key) => {
         const { holes, islands } = partPolygons(key, shown[key], 1);
         if (!holes.length) return null;

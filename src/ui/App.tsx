@@ -5,10 +5,14 @@ import { useStore } from '../state/store';
 import { CheckBadge } from './CheckBadge';
 import { PresetCards } from './PresetCards';
 import { TabContent, TABS } from './tabs/Tabs';
+import { useLang, useT } from '../i18n';
 
 export function App() {
   useAutoBuild();
   useUrlSync();
+  const t = useT();
+  const lang = useLang((s) => s.lang);
+  const setLang = useLang((s) => s.setLang);
   const tab = useStore((s) => s.tab);
   const setTab = useStore((s) => s.setTab);
   const [sheet, setSheet] = useState<'half' | 'full' | 'min'>('half');
@@ -18,9 +22,9 @@ export function App() {
     const url = shareUrl(useStore.getState().params);
     try {
       await navigator.clipboard.writeText(url);
-      setToast('URLをコピーしました');
+      setToast(t('copied'));
     } catch {
-      window.prompt('このURLをコピーしてください', url);
+      window.prompt(t('copyPrompt'), url);
     }
     setTimeout(() => setToast(null), 2000);
   };
@@ -33,34 +37,37 @@ export function App() {
         </h1>
         <div className="topbar-actions">
           <CheckBadge />
+          <button className="ghost lang" onClick={() => setLang(lang === 'en' ? 'ja' : 'en')} title="Language / 言語">
+            {lang === 'en' ? '日本語' : 'EN'}
+          </button>
           <button className="ghost" onClick={share}>
-            共有
+            {t('share')}
           </button>
         </div>
       </header>
       <main className="layout">
-        <section className="panel" aria-label="パラメータ">
+        <section className="panel" aria-label={t('panel')}>
           <button
             className="sheet-handle"
-            aria-label="パネルの高さを切り替え"
+            aria-label={t('sheetToggle')}
             onClick={() => setSheet(sheet === 'half' ? 'full' : sheet === 'full' ? 'min' : 'half')}
           >
             <span />
           </button>
           <PresetCards />
           <nav className="tabs" role="tablist">
-            {TABS.map((t) => (
+            {TABS.map((id) => (
               <button
-                key={t.id}
+                key={id}
                 role="tab"
-                aria-selected={tab === t.id}
-                className={tab === t.id ? 'on' : ''}
+                aria-selected={tab === id}
+                className={tab === id ? 'on' : ''}
                 onClick={() => {
-                  setTab(t.id);
+                  setTab(id);
                   if (sheet === 'min') setSheet('half');
                 }}
               >
-                {t.label}
+                {t(`tab.${id}`)}
               </button>
             ))}
           </nav>
@@ -68,7 +75,7 @@ export function App() {
             <TabContent tab={tab} />
           </div>
         </section>
-        <section className="stage" aria-label="3Dプレビュー">
+        <section className="stage" aria-label={t('preview3d')}>
           <Viewer />
         </section>
       </main>

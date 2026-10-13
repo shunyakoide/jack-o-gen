@@ -1,7 +1,9 @@
 import { NUM_DEF_BY_KEY, type NumParams } from '../model/params';
 import { useStore } from '../state/store';
+import { useT } from '../i18n';
 
 export function ParamSlider({ k }: { k: keyof NumParams }) {
+  const t = useT();
   const def = NUM_DEF_BY_KEY[k];
   const value = useStore((s) => s.params[k]);
   const setNum = useStore((s) => s.setNum);
@@ -9,7 +11,7 @@ export function ParamSlider({ k }: { k: keyof NumParams }) {
   return (
     <label className="slider">
       <span className="slider-head">
-        <span>{def.label}</span>
+        <span>{t(`p.${k}`)}</span>
         <input
           type="number"
           className="slider-num"
