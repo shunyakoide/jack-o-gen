@@ -22,18 +22,18 @@ export function ExportPanel() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const red = preview?.level === 'red';
-  const name = `jack-o-gen-${params.mode === 'lantern' ? 'lantern' : 'sealed'}-${params.seed}.stl`;
+  const name = `jack-o-gen-${params.mode === 'lantern' ? 'lantern' : 'sealed'}-${params.seed}`;
 
   const doExport = async () => {
     setConfirm(false);
     setBusy(true);
     setMsg(null);
     try {
-      const { stl, result } = await geometry().exportStl(params);
+      const { files, result } = await geometry().exportStl(params);
       if (result.level === 'red') {
         setMsg(t('exportRed'));
       } else {
-        download(stl, name);
+        for (const f of files) download(f.stl, `${name}${f.suffix}.stl`);
         setMsg(t('exportDone', { n: result.stats.triangles.toLocaleString(), s: (result.stats.ms / 1000).toFixed(1) }));
       }
     } catch (e) {

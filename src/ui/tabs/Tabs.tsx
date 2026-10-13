@@ -90,6 +90,8 @@ function PrintTab() {
   const t = useT();
   const mode = useStore((s) => s.params.mode);
   const setMode = useStore((s) => s.setMode);
+  const stemAttach = useStore((s) => s.params.stemAttach);
+  const setStemAttach = useStore((s) => s.setStemAttach);
   return (
     <>
       <div className="seg wide">
@@ -110,6 +112,14 @@ function PrintTab() {
           <ParamGroup group="print" exclude={['wall', 'led']} />
         </>
       )}
+      <div className="seg wide">
+        {(['fused', 'peg'] as const).map((a) => (
+          <button key={a} className={stemAttach === a ? 'on' : ''} onClick={() => setStemAttach(a)}>
+            {t(`stemAttach.${a}`)}
+          </button>
+        ))}
+      </div>
+      {stemAttach === 'peg' && <p className="hint">{t('pegHint')}</p>}
       <ExportPanel />
     </>
   );

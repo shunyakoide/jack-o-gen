@@ -86,6 +86,9 @@ export const en: Record<string, string> = {
   'mode.sealed': 'Solid (engraved face)',
   ledNoticeStrong: 'LED candles only.',
   ledNotice: 'PLA softens around 60 °C — never put a real flame inside.',
+  'stemAttach.fused': 'Stem attached',
+  'stemAttach.peg': 'Stem separate (plug-in)',
+  pegHint: 'Downloads 2 STL files (body and stem). The stem push-fits onto a pin on top; add a drop of glue if it is loose.',
   sealedHint: 'Printed solid (set infill in your slicer); the face is engraved.',
 
   'level.green': 'Print OK',

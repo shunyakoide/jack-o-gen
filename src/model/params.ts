@@ -1,6 +1,8 @@
 // パラメータの型・初期値・範囲。UI・URL・ジオメトリで共有する唯一の定義。
 
 export type InteriorMode = 'lantern' | 'sealed';
+/** ヘタを本体と一体で出すか、別パーツ（本体のピンに差し込む）にするか */
+export type StemAttach = 'fused' | 'peg';
 export type PartKind = 'eye' | 'nose' | 'mouth';
 
 export interface FacePart {
@@ -65,6 +67,7 @@ export interface NumParams {
 
 export interface Params extends NumParams {
   mode: InteriorMode;
+  stemAttach: StemAttach;
   face: FaceParams;
 }
 
@@ -144,7 +147,7 @@ export function defaultFace(): FaceParams {
 export function defaultParams(): Params {
   const p = {} as NumParams;
   for (const d of NUM_DEFS) (p as unknown as Record<string, number>)[d.key] = d.def;
-  return { ...p, mode: 'lantern', face: defaultFace() };
+  return { ...p, mode: 'lantern', stemAttach: 'fused', face: defaultFace() };
 }
 
 export function clampNum(def: NumDef, v: number): number {
