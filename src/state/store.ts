@@ -51,13 +51,22 @@ function initialParams(): Params {
   return defaultParams();
 }
 
-let lastPush = 0;
+// 操作単位の履歴：ドラッグや長押し中（beginGesture〜endGesture）の変更は最初の 1 回だけ履歴に積む。
+// 区切りがない変更（クリックなど）は毎回 1 手
+let gesture: 'none' | 'open' | 'pushed' = 'none';
 
-/** params を変更しつつ履歴に積む。ドラッグやスライダーの連続操作（0.5 秒以内）は 1 手にまとめる */
+export function beginGesture() {
+  if (gesture === 'none') gesture = 'open';
+}
+
+export function endGesture() {
+  gesture = 'none';
+}
+
+/** params を変更しつつ履歴に積む */
 function track(s: State, params: Params): Pick<State, 'params' | 'past' | 'future'> {
-  const now = Date.now();
-  const past = now - lastPush > 500 ? [...s.past, s.params].slice(-50) : s.past;
-  lastPush = now;
+  const past = gesture === 'pushed' ? s.past : [...s.past, s.params].slice(-50);
+  if (gesture === 'open') gesture = 'pushed';
   return { params, past, future: [] };
 }
 
@@ -74,13 +83,13 @@ export const useStore = create<State>((set) => ({
   undo: () =>
     set((s) => {
       if (!s.past.length) return {};
-      lastPush = 0;
+      endGesture();
       return { params: s.past[s.past.length - 1], past: s.past.slice(0, -1), future: [s.params, ...s.future], activePreset: null };
     }),
   redo: () =>
     set((s) => {
       if (!s.future.length) return {};
-      lastPush = 0;
+      endGesture();
       return { params: s.future[0], past: [...s.past, s.params], future: s.future.slice(1), activePreset: null };
     }),
   setNum: (key, v) =>

@@ -3,3 +3,7 @@ dist
 *.local
 .DS_Store
 *.tsbuildinfo
+
+# Claude Code のローカル作業領域
+.claude/worktrees/
+.claude/settings.local.json

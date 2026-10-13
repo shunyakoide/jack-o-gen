@@ -1,5 +1,27 @@
 # Jack-o-Gen
 
+## English
+
+Jack-o-Gen is a browser-only jack-o'-lantern designer that exports STL files for 3D printing. Everything runs on your machine; there is no server.
+
+**How to use.** Pick a preset, shape the body, ribs, and stem on the Shape tab, then drag the eyes, nose, and mouth on the Face tab. On the Print tab, set the wall thickness and LED opening, choose an attached or plug-in stem, check the print warnings, and download the STL. The Share button copies a link that restores the design. Light it with an LED tea light only, never a candle: PLA softens around 60 °C.
+
+Tuned for a Bambu Lab A1 (256 mm bed) with a 0.4 mm nozzle and PLA.
+
+**Development.** Requires Node 22.
+
+```sh
+npm install
+npm run dev        # dev server at http://localhost:5173
+npm test           # geometry and manifold tests (vitest, manifold-3d running in Node)
+npm run test:fast  # skips the export-resolution and random-shape suites
+npm run build      # type check and production build into dist/
+```
+
+Released under the MIT License (see `LICENSE`).
+
+## 日本語
+
 3Dプリント用のジャック・オー・ランタンを、ブラウザだけで設計して STL を書き出す Web アプリです。
 
 - 想定プリンタ：Bambu Lab A1（造形範囲 256mm、ノズル 0.4mm、PLA）

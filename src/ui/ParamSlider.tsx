@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { NUM_DEF_BY_KEY, type NumParams } from '../model/params';
 import { useStore } from '../state/store';
 import { useT } from '../i18n';
+import { gestureProps } from './gesture';
 
 export function ParamSlider({ k }: { k: keyof NumParams }) {
   const t = useT();
@@ -16,7 +17,7 @@ export function ParamSlider({ k }: { k: keyof NumParams }) {
     setDraft(null);
   };
   return (
-    <label className="slider">
+    <label className="slider" {...gestureProps}>
       <span className="slider-head">
         <span>{t(`p.${k}`)}</span>
         <input

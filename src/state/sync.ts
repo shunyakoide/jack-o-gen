@@ -56,13 +56,19 @@ export function useAutoBuild() {
   }, []);
 }
 
+// すべて既定値ならクエリごと省く
+function search(p: Params): string {
+  const q = encodeParams(p);
+  return q && `?${q}`;
+}
+
 export function useUrlSync() {
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const write = (p: Params) => {
       clearTimeout(timer);
       timer = setTimeout(() => {
-        history.replaceState(null, '', `${location.pathname}?${encodeParams(p)}`);
+        history.replaceState(null, '', `${location.pathname}${search(p)}`);
       }, 250);
     };
     const unsub = useStore.subscribe((s, prev) => {
@@ -76,5 +82,5 @@ export function useUrlSync() {
 }
 
 export function shareUrl(p: Params): string {
-  return `${location.origin}${location.pathname}?${encodeParams(p)}`;
+  return `${location.origin}${location.pathname}${search(p)}`;
 }

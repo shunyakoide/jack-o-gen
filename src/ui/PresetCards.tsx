@@ -9,12 +9,12 @@ export function PresetCards() {
   const apply = useStore((s) => s.applyPreset);
   const active = useStore((s) => s.activePreset);
   return (
-    <div className="presets" role="list">
+    <div className="presets">
       {PRESET_CARDS.map((c) => (
         <button
           key={c.id}
-          role="listitem"
           className={`preset ${active === c.id ? 'active' : ''}`}
+          aria-current={active === c.id}
           onClick={() => apply(c.id)}
           title={t(`preset.${c.id}.hint`)}
         >

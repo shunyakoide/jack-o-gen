@@ -99,6 +99,8 @@ export function App() {
               <button
                 key={id}
                 role="tab"
+                id={`tab-${id}`}
+                aria-controls="tab-panel"
                 aria-selected={tab === id}
                 className={tab === id ? 'on' : ''}
                 onClick={() => {
@@ -110,7 +112,7 @@ export function App() {
               </button>
             ))}
           </nav>
-          <div className="tab-body" role="tabpanel">
+          <div className="tab-body" role="tabpanel" id="tab-panel" aria-labelledby={`tab-${tab}`}>
             <TabContent tab={tab} />
           </div>
         </section>

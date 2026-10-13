@@ -5,6 +5,7 @@ import { partPolygons } from '../../geometry/face/layout';
 import { applySymmetry, PART_KEYS, type FacePart, type PartKey } from '../../model/params';
 import { useStore } from '../../state/store';
 import { useT } from '../../i18n';
+import { holdGesture } from '../gesture';
 
 const VB = { x: -95, y: -58, w: 190, h: 116 };
 
@@ -67,6 +68,7 @@ export function FaceEditor() {
     e.stopPropagation();
     (e.target as Element).setPointerCapture(e.pointerId);
     selectPart(d.key);
+    holdGesture(e);
     setDrag(d);
   };
 
@@ -91,11 +93,12 @@ export function FaceEditor() {
     }
   };
 
-  // 矢印キーで選択パーツを 1mm（Shift で 5mm）ずつ動かす
+  // 矢印キーで選択パーツを 1mm（Shift で 5mm）ずつ動かす。押し続けた分は 1 手にまとめる
   const onKey = (e: React.KeyboardEvent) => {
     const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[e.key];
     if (!d) return;
     e.preventDefault();
+    holdGesture(e);
     const p = shown[selected];
     const k = e.shiftKey ? 5 : 1;
     setPart(selected, { x: p.x + d[0] * k, y: p.y + d[1] * k });
