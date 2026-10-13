@@ -43,6 +43,8 @@ export const BED_LIMIT = 250;
 export const MIN_WALL = 1.2;
 export const MIN_HOLE = 2;
 export const MIN_LINK = 3;
+// ランタン内天井の傾き（tan 20°）。内側は見えないので 70° オーバーハングまで許す（壁厚一定を優先）
+export const CEIL_SLOPE = Math.tan((20 * Math.PI) / 180);
 
 function toManifold(wasm: Wasm, scope: Scope, positions: Float32Array, indices: Uint32Array): Manifold {
   const mesh = new wasm.Mesh({ numProp: 3, vertProperties: positions, triVerts: indices });
@@ -124,20 +126,28 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
       const nt = body.nTheta;
       const firstBottom = 1 + (body.rings - 1) * nt;
       for (let v = firstBottom; v < inner.length / 3; v++) inner[v * 3 + 2] = -1;
-      // 内天井の 45° 円錐：最大径より上の内面の点すべてより下に頂点を置く
-      let zApex = Infinity;
-      for (let v = 0; v < inner.length / 3; v++) {
-        const z = inner[v * 3 + 2];
-        if (z < info.zCenter) continue;
-        zApex = Math.min(zApex, z + Math.hypot(inner[v * 3], inner[v * 3 + 1]));
+      // 内天井の円錐（水平から約 20° = 70° オーバーハング）。経線を赤道から上へたどり、
+      // 内面がこの傾きより寝始めた点から上だけを円錐で埋める。それより下は壁厚一定のまま
+      const k = CEIL_SLOPE;
+      const zk = (v: number) => inner[v * 3 + 2] + k * Math.hypot(inner[v * 3], inner[v * 3 + 1]);
+      let zApex = zk(0);
+      for (let i = 0; i < nt; i++) {
+        let flat = false;
+        for (let j = body.rings; j >= 1; j--) {
+          const v = 1 + (j - 1) * nt + i;
+          if (inner[v * 3 + 2] < info.zCenter) continue;
+          // 上の点（j=1 は極）へ向かって z + k·r が減る = 円錐より寝ている
+          if (!flat) flat = zk(j > 1 ? v - nt : 0) < zk(v);
+          if (flat) zApex = Math.min(zApex, zk(v));
+        }
       }
       const innerM = toManifold(wasm, scope, inner, body.indices);
       ids[innerM.originalID()] = 'inner';
       const h = zApex + 10;
       const cone = scope.keep(
-        scope.keep(scope.keep(wasm.Manifold.cylinder(h, h, 0, fine ? 192 : 64)).translate([0, 0, zApex - h])).asOriginal(),
+        scope.keep(scope.keep(wasm.Manifold.cylinder(h, h / k, 0, fine ? 192 : 64)).translate([0, 0, zApex - h])).asOriginal(),
       );
-      // draft では天井の円錐カットを省く（外からはほぼ見えず、ブーリアン 1 回分速い）
+      // draft では天井の円錐カットを省く（頂上の内側だけなので外からは見えず、ブーリアン 1 回分速い）
       const ceiling = quality === 'draft' ? innerM : scope.keep(innerM.intersect(cone));
       const cavity = scope.keep(ceiling.trimByPlane([0, 0, 1], p.floor));
       const led = scope.keep(
