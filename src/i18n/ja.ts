@@ -133,4 +133,9 @@ export const ja: Record<string, string> = {
 
   building: '生成中…',
   triangles: '{n} 面・{ms} ms',
+  buildError: 'この形を生成できませんでした。設定を変えるか、ページを再読み込みしてください。',
+  viewerError: '3D プレビューを表示できません（WebGL が無効か非対応です）。設定の変更と STL のダウンロードはできます。',
+  exportTimeout: '書き出しに時間がかかりすぎたため中止しました。サイズやリブ数を減らして、もう一度お試しください。',
+  firstHint: 'プリセットを選ぶ → 「出力」タブ → STL をダウンロード',
+  dismiss: '閉じる',
 };

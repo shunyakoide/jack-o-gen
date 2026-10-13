@@ -133,4 +133,9 @@ export const en: Record<string, string> = {
 
   building: 'Building…',
   triangles: '{n} tris · {ms} ms',
+  buildError: 'Couldn’t build this shape. Try changing a setting or reload the page.',
+  viewerError: 'The 3D preview isn’t available (WebGL is off or unsupported). You can still adjust settings and download the STL.',
+  exportTimeout: 'Export took too long and was stopped. Try a smaller size or fewer ribs, then download again.',
+  firstHint: 'Pick a preset → open Print → Download STL',
+  dismiss: 'Dismiss',
 };

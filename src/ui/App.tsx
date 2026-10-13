@@ -7,6 +7,19 @@ import { PresetCards } from './PresetCards';
 import { TabContent, TABS } from './tabs/Tabs';
 import { useLang, useT } from '../i18n';
 
+const HINT_KEY = 'jog.hintSeen';
+
+/** 初回訪問かどうか。読み込んだ時点で既読にする（保存領域が使えない環境では毎回表示） */
+const FIRST_VISIT = ((): boolean => {
+  try {
+    if (localStorage.getItem(HINT_KEY)) return false;
+    localStorage.setItem(HINT_KEY, '1');
+  } catch {
+    /* noop */
+  }
+  return true;
+})();
+
 export function App() {
   useAutoBuild();
   useUrlSync();
@@ -17,6 +30,7 @@ export function App() {
   const setTab = useStore((s) => s.setTab);
   const [sheet, setSheet] = useState<'half' | 'full' | 'min'>('half');
   const [toast, setToast] = useState<string | null>(null);
+  const [hint, setHint] = useState(FIRST_VISIT);
 
   // ⌘Z / Ctrl+Z で元に戻す、⇧ 付きか Ctrl+Y でやり直す（数値入力欄は自前の取り消しに任せる）
   useEffect(() => {
@@ -70,6 +84,14 @@ export function App() {
           >
             <span />
           </button>
+          {hint && (
+            <p className="first-hint">
+              <span>{t('firstHint')}</span>
+              <button className="first-hint-close" onClick={() => setHint(false)} aria-label={t('dismiss')}>
+                ×
+              </button>
+            </p>
+          )}
           <PresetCards />
           <nav className="tabs" role="tablist">
             {TABS.map((id) => (
@@ -95,7 +117,10 @@ export function App() {
           <Viewer />
         </section>
       </main>
-      {toast && <div className="toast">{toast}</div>}
+      {/* ライブリージョンは常に置いておき、中身の出し入れで読み上げさせる */}
+      <div role="status" aria-live="polite">
+        {toast && <div className="toast">{toast}</div>}
+      </div>
     </div>
   );
 }

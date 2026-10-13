@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { boxOf, partSize, type Vec3 } from '../../geometry/layout';
 import { zipStore } from '../../geometry/zip';
 import { useT } from '../../i18n';
 import { useStore } from '../../state/store';
-import { geometry } from '../../worker/client';
+import { callWorker, WorkerTimeout } from '../../worker/client';
 import { CheckList } from '../CheckBadge';
 import { LedNotice } from './LedNotice';
 
@@ -23,6 +23,14 @@ export function ExportPanel() {
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const cancel = useRef<HTMLButtonElement>(null);
+  // ネイティブ <dialog> の showModal で Esc・フォーカス閉じ込め・背景の不活性化をブラウザに任せる
+  useEffect(() => {
+    if (!confirm) return;
+    dialog.current?.showModal();
+    cancel.current?.focus();
+  }, [confirm]);
   const red = preview?.level === 'red';
   const name = `jack-o-gen-lantern-${params.seed}`;
   // ダウンロードされるファイルと大きさ（ヘタは seatZ を底面として測る）
@@ -36,7 +44,7 @@ export function ExportPanel() {
     setBusy(true);
     setMsg(null);
     try {
-      const { files, result } = await geometry().exportStl(params);
+      const { files, result } = await callWorker((g) => g.exportStl(params), 120_000);
       if (result.level === 'red') {
         setMsg(t('exportRed'));
       } else {
@@ -46,7 +54,7 @@ export function ExportPanel() {
         setMsg(t('exportDone', { n: result.stats.triangles.toLocaleString(), s: (result.stats.ms / 1000).toFixed(1) }));
       }
     } catch (e) {
-      setMsg(t('exportFail', { e: String(e) }));
+      setMsg(e instanceof WorkerTimeout ? t('exportTimeout') : t('exportFail', { e: String(e) }));
     } finally {
       setBusy(false);
     }
@@ -78,19 +86,19 @@ export function ExportPanel() {
         </details>
       )}
       {confirm && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="led-title">
-          <div className="modal">
-            <h3 id="led-title">{t('beforeDownload')}</h3>
-            <LedNotice />
-            <p>{t('useLed')}</p>
-            <div className="modal-actions">
-              <button onClick={() => setConfirm(false)}>{t('cancel')}</button>
-              <button className="primary" onClick={doExport}>
-                {t('agree')}
-              </button>
-            </div>
+        <dialog ref={dialog} className="modal" aria-labelledby="led-title" onClose={() => setConfirm(false)}>
+          <h3 id="led-title">{t('beforeDownload')}</h3>
+          <LedNotice />
+          <p>{t('useLed')}</p>
+          <div className="modal-actions">
+            <button ref={cancel} onClick={() => setConfirm(false)}>
+              {t('cancel')}
+            </button>
+            <button className="primary" onClick={doExport}>
+              {t('agree')}
+            </button>
           </div>
-        </div>
+        </dialog>
       )}
     </div>
   );
