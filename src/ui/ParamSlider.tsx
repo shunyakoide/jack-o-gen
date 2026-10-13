@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NUM_DEF_BY_KEY, type NumParams } from '../model/params';
 import { useStore } from '../state/store';
 import { useT } from '../i18n';
@@ -7,7 +8,13 @@ export function ParamSlider({ k }: { k: keyof NumParams }) {
   const def = NUM_DEF_BY_KEY[k];
   const value = useStore((s) => s.params[k]);
   const setNum = useStore((s) => s.setNum);
+  // 入力中の文字列（null = 確定済み）。打鍵ごとに範囲へ丸めると "150" が途中の "1" で止まるため、Enter／フォーカス外れで確定する
+  const [draft, setDraft] = useState<string | null>(null);
   const digits = def.step >= 1 ? 0 : def.step >= 0.1 ? 1 : def.step >= 0.01 ? 2 : 3;
+  const commit = () => {
+    if (draft !== null && draft.trim() !== '' && Number.isFinite(Number(draft))) setNum(k, Number(draft));
+    setDraft(null);
+  };
   return (
     <label className="slider">
       <span className="slider-head">
@@ -18,8 +25,20 @@ export function ParamSlider({ k }: { k: keyof NumParams }) {
           min={def.min}
           max={def.max}
           step={def.step}
-          value={+value.toFixed(digits)}
-          onChange={(e) => setNum(k, Number(e.target.value))}
+          value={draft ?? +value.toFixed(digits)}
+          onChange={(e) => {
+            // スピンボタン・矢印キー（inputType なし）は即確定、打鍵は下書き
+            if ((e.nativeEvent as InputEvent).inputType) setDraft(e.target.value);
+            else {
+              setDraft(null);
+              setNum(k, Number(e.target.value));
+            }
+          }}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commit();
+            else if (e.key === 'Escape') setDraft(null);
+          }}
         />
         {def.unit && <span className="unit">{def.unit}</span>}
       </span>
