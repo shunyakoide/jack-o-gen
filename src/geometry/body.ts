@@ -98,6 +98,8 @@ export function buildBody(p: Params, res: Resolution): Body {
   const M = res.rings;
   const F = M * 4; // 子午線の細かいサンプル数
   const rf = radiusFn(p);
+  // 子午線を筋のねじれに沿って回す（θ = θi + τ·cosφ/2）。溝の中心がいつも列の線に乗り、斜めの溝が階段状にならない
+  const tw = ((p.twist * Math.PI) / 180) * 0.5;
 
   const rho: Float64Array[] = [];
   const zz: Float64Array[] = [];
@@ -111,7 +113,7 @@ export function buildBody(p: Params, res: Resolution): Body {
     let jm = 0;
     for (let j = 0; j <= F; j++) {
       const phi = (Math.PI * j) / F;
-      const r = rf(th, phi);
+      const r = rf(th + tw * Math.cos(phi), phi);
       R[j] = j === 0 || j === F ? 0 : r * Math.sin(phi);
       Z[j] = r * Math.cos(phi);
       if (R[j] > R[jm]) jm = j;
@@ -181,10 +183,17 @@ export function buildBody(p: Params, res: Resolution): Body {
     for (let j = 0; j <= F; j++) if (R[j] > R[jm]) jm = j;
     zCenterAcc += Z[jm];
     rEqAcc += R[jm];
-    const c = Math.cos(thetas[i]);
-    const s = Math.sin(thetas[i]);
+    // リングは断面の弧長で等分する。φ で等分すると、平らな底（45° 補正で ρ が止まり z もほぼ一定）の
+    // 長さ 0 の区間にリングが潰れ、その区間の長さが子午線ごとに違うためリングの高さが隣とずれて面が折れる
+    const S = new Float64Array(F + 1);
+    for (let j = 1; j <= F; j++) S[j] = S[j - 1] + Math.hypot(R[j] - R[j - 1], Z[j] - Z[j - 1]);
+    const c0 = Math.min(F - 1, Math.floor(cutIdx[i]));
+    const len = S[c0] + (S[c0 + 1] - S[c0]) * (cutIdx[i] - c0);
+    let k = 0;
     for (let j = 1; j <= M; j++) {
-      const f = (cutIdx[i] * j) / M;
+      const target = (len * j) / M;
+      while (k < F - 1 && S[k + 1] < target) k++;
+      const f = j === M ? cutIdx[i] : k + (S[k + 1] > S[k] ? (target - S[k]) / (S[k + 1] - S[k]) : 0);
       const j0 = Math.min(F - 1, Math.floor(f));
       const t = f - j0;
       const r = R[j0] + (R[j0 + 1] - R[j0]) * t;
@@ -194,15 +203,16 @@ export function buildBody(p: Params, res: Resolution): Body {
         rContact = Math.min(rContact, r);
       }
       const v = 1 + (j - 1) * nTheta + i;
-      pos[v * 3] = r * c * scale;
-      pos[v * 3 + 1] = r * s * scale;
+      const a = thetas[i] + tw * Math.cos((Math.PI * f) / F);
+      pos[v * 3] = r * Math.cos(a) * scale;
+      pos[v * 3 + 1] = r * Math.sin(a) * scale;
       pos[v * 3 + 2] = (z - zCut) * scale;
     }
   }
   const bottom = nVert - 1;
   pos[bottom * 3 + 2] = 0;
 
-  const indices = gridIndices(nTheta, M);
+  const indices = gridIndices(nTheta, M, pos);
   return {
     positions: pos,
     indices,
@@ -220,7 +230,8 @@ export function buildBody(p: Params, res: Resolution): Body {
 }
 
 /** 頂点0=天頂、続いて M 本のリング、最後に底面中心。外向き CCW */
-export function gridIndices(nTheta: number, M: number): Uint32Array {
+function gridIndices(nTheta: number, M: number, P: Float32Array): Uint32Array {
+  const d2 = (u: number, v: number) => (P[u * 3] - P[v * 3]) ** 2 + (P[u * 3 + 1] - P[v * 3 + 1]) ** 2 + (P[u * 3 + 2] - P[v * 3 + 2]) ** 2;
   const tris: number[] = [];
   const ring = (j: number, i: number) => 1 + (j - 1) * nTheta + (i % nTheta);
   for (let i = 0; i < nTheta; i++) tris.push(0, ring(1, i), ring(1, i + 1));
@@ -230,7 +241,9 @@ export function gridIndices(nTheta: number, M: number): Uint32Array {
       const b = ring(j, i + 1);
       const c = ring(j + 1, i + 1);
       const d = ring(j + 1, i);
-      tris.push(a, d, b, b, d, c);
+      // 短い方の対角線で割る。ねじれた深い溝が格子を斜めに横切る所で、溝を横切る向きに割ると面が折れて筋が出る
+      if (d2(b, d) <= d2(a, c)) tris.push(a, d, b, b, d, c);
+      else tris.push(a, d, c, a, c, b);
     }
   }
   const bottom = 1 + M * nTheta;

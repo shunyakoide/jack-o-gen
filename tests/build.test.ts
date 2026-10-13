@@ -44,6 +44,30 @@ describe('外形', () => {
     expect(worst).toBeLessThan(1.05);
     expect((b.info.rContact * 2) / (b.info.rMax * 2)).toBeGreaterThanOrEqual(0.35);
   });
+
+  it('格子の四角形が対角線で折れない（平らな底・ねじれた深い筋）', () => {
+    const random = PRESET_CARDS.find((c) => c.id === 'random')!;
+    const shapes = [...PRESET_CARDS.filter((c) => c.id !== 'random').map((c) => c.make(1)), random.make(4 * 7919), random.make(11 * 7919)];
+    for (const p of shapes) {
+      const { positions: P, indices: I, nTheta, rings } = buildBody(p, PREVIEW_RES);
+      const normal = (f: number) => {
+        const [a, b, c] = [I[f], I[f + 1], I[f + 2]].map((v) => [P[v * 3], P[v * 3 + 1], P[v * 3 + 2]]);
+        const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+        const w = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+        const n = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
+        const l = Math.hypot(...n);
+        return n.map((x) => x / l);
+      };
+      let worst = 0;
+      // 底面に接する最後の 2 リングは本来の角なので除く
+      for (let q = 0; q < (rings - 3) * nTheta; q++) {
+        const f = (nTheta + q * 2) * 3;
+        const [n1, n2] = [normal(f), normal(f + 3)];
+        worst = Math.max(worst, (Math.acos(Math.min(1, n1[0] * n2[0] + n1[1] * n2[1] + n1[2] * n2[2])) * 180) / Math.PI);
+      }
+      expect(worst).toBeLessThan(15);
+    }
+  });
 });
 
 describe('buildPumpkin', () => {
