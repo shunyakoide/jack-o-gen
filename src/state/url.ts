@@ -2,6 +2,7 @@
 import { clampFace } from '../geometry/face/layout';
 import {
   clampNum,
+  defaultFace,
   defaultParams,
   NUM_DEFS,
   PART_KEYS,
@@ -32,12 +33,16 @@ function decodePart(s: string | undefined, def: FacePart): FacePart {
   };
 }
 
+const encodeFace = (f: FaceParams) => [f.symmetric ? '1' : '0', ...PART_KEYS.map((k) => encodePart(f[k]))].join('_');
+const DEFAULT_FACE = encodeFace(defaultFace());
+
 export function encodeParams(p: Params): string {
   const q = new URLSearchParams();
   // 既定値と同じ項目は省いて URL を短くする
   for (const d of NUM_DEFS) if (fmt(p[d.key]) !== fmt(d.def)) q.set(d.q, fmt(p[d.key]));
   if (p.stemAttach === 'peg') q.set('a', 'p');
-  q.set('f', [p.face.symmetric ? '1' : '0', ...PART_KEYS.map((k) => encodePart(p.face[k]))].join('_'));
+  const f = encodeFace(p.face);
+  if (f !== DEFAULT_FACE) q.set('f', f);
   return q.toString();
 }
 
