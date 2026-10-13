@@ -1,11 +1,11 @@
 // 3D プレビュー（react-three-fiber + drei）。ジオメトリは z 上の mm 座標で届く。
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
 import { ContactShadows, OrbitControls } from '@react-three/drei';
 import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { MeshGroup, PartKindId } from '../geometry/build';
-import { printLayout, type Box } from '../geometry/layout';
+import { boxOf, printLayout, type Box } from '../geometry/layout';
 import { useStore } from '../state/store';
 
 const KIND_ORDER: PartKindId[] = ['body', 'stem', 'cut', 'inner'];
@@ -59,12 +59,33 @@ function Pumpkin() {
 
 let shadowSeq = 0;
 
+/** 配置（組み立て ↔ Print タブのベッド配置）が切り替わったときだけ、全体が入るようカメラを引く */
+function FitCamera({ width, h, layoutKey }: { width: number; h: number; layoutKey: string }) {
+  const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
+  const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null;
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    const t = Math.tan((camera.fov * Math.PI) / 360);
+    // 縦（高さ）と横（幅・縦長ペインでは aspect で効く）の両方が 1.3 倍の余白で収まる距離
+    const dist = Math.max(260, (1.3 * h) / 2 / t, (1.3 * width) / 2 / (t * camera.aspect));
+    camera.position.set(0, (h * 0.9 * dist) / 260, dist);
+    controls?.target.set(0, h * 0.45, 0);
+    controls?.update();
+    invalidate();
+    // 形状更新では動かさない（スライダー操作中にカメラが跳ねないように）
+  }, [layoutKey, controls]);
+  return null;
+}
+
 export function Viewer() {
   const building = useStore((s) => s.building);
   const preview = useStore((s) => s.preview);
   const error = useStore((s) => s.error);
   const printTab = useStore((s) => s.tab === 'print');
   const h = preview?.stats.height ?? 120;
+  const layoutStem = printTab ? preview?.stem : undefined;
+  const sb = layoutStem ? boxOf(layoutStem.positions) : null;
+  const layoutWidth = (preview?.stats.width ?? 120) + (sb ? 10 + sb.max[0] - sb.min[0] : 0);
   // 形状が届くたび・配置が変わるたびに ContactShadows を作り直して焼き直す
   const shadowKey = useMemo(() => ++shadowSeq, [preview, printTab]);
   return (
@@ -79,6 +100,7 @@ export function Viewer() {
         <ContactShadows key={shadowKey} frames={1} position={[0, 0, 0]} opacity={0.55} scale={400} blur={2.4} far={200} />
         <gridHelper args={[256, 16, '#4a3a55', '#30263a']} position={[0, -0.05, 0]} />
         <OrbitControls target={[0, h * 0.45, 0]} makeDefault enableDamping minDistance={80} maxDistance={900} />
+        <FitCamera width={layoutWidth} h={h} layoutKey={`${printTab}-${!!layoutStem}`} />
       </Canvas>
       <div className="viewer-status">
         {error ? <span className="err">Error</span> : building ? <span>…</span> : preview ? (
