@@ -91,14 +91,14 @@ export function Viewer() {
   return (
     <div className="viewer">
       {/* 操作中だけ描画（demand）。影は形状が変わったときに 1 回だけ焼く */}
-      <Canvas frameloop="demand" camera={{ position: [0, h * 0.9, 260], fov: 35, near: 1, far: 5000 }} dpr={[1, 1.5]}>
-        <color attach="background" args={['#1b1420']} />
+      <Canvas frameloop="demand" camera={{ position: [0, h * 0.9, 260], fov: 35, near: 1, far: 5000 }} dpr={[1, 1.5]} gl={{ alpha: true }}>
+        {/* 背景は .stage の CSS グラデーション（灯り）を透かす */}
         <hemisphereLight args={['#ffe9d0', '#2a1830', 0.9]} />
         <directionalLight position={[120, 220, 160]} intensity={1.6} />
         <directionalLight position={[-160, 80, -120]} intensity={0.5} color="#a8b8ff" />
         <Pumpkin />
         <ContactShadows key={shadowKey} frames={1} position={[0, 0, 0]} opacity={0.55} scale={400} blur={2.4} far={200} />
-        <gridHelper args={[256, 16, '#4a3a55', '#30263a']} position={[0, -0.05, 0]} />
+        <gridHelper args={[256, 16, '#463650', '#2a2033']} position={[0, -0.05, 0]} />
         <OrbitControls target={[0, h * 0.45, 0]} makeDefault enableDamping minDistance={80} maxDistance={900} />
         <FitCamera width={layoutWidth} h={h} layoutKey={`${printTab}-${!!layoutStem}`} />
       </Canvas>

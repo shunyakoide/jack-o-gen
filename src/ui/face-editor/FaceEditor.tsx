@@ -91,6 +91,16 @@ export function FaceEditor() {
     }
   };
 
+  // 矢印キーで選択パーツを 1mm（Shift で 5mm）ずつ動かす
+  const onKey = (e: React.KeyboardEvent) => {
+    const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[e.key];
+    if (!d) return;
+    e.preventDefault();
+    const p = shown[selected];
+    const k = e.shiftKey ? 5 : 1;
+    setPart(selected, { x: p.x + d[0] * k, y: p.y + d[1] * k });
+  };
+
   const sel = shown[selected];
   const selRot = (sel.rot * Math.PI) / 180;
   const corner = rotate(sel.w / 2, -sel.h / 2, selRot);
@@ -99,7 +109,9 @@ export function FaceEditor() {
   return (
     <svg
       ref={svgRef}
-      className="face-editor"
+      className={`face-editor ${drag ? 'dragging' : ''}`}
+      tabIndex={0}
+      onKeyDown={onKey}
       viewBox={`${VB.x} ${VB.y} ${VB.w} ${VB.h}`}
       onPointerMove={onMove}
       onPointerUp={() => setDrag(null)}
@@ -145,23 +157,30 @@ export function FaceEditor() {
             className="fe-box"
           />
           <line x1={0} y1={0} x2={knob[0]} y2={-knob[1]} className="fe-box" />
-          <circle
-            cx={corner[0]}
-            cy={-corner[1]}
-            r={2.6}
+          <Handle
+            at={corner}
             className="fe-handle"
             onPointerDown={(e) => start(e, { mode: 'scale', key: selected, part: sel })}
           />
-          <circle
-            cx={knob[0]}
-            cy={-knob[1]}
-            r={2.6}
+          <Handle
+            at={knob}
             className="fe-handle rot"
             onPointerDown={(e) => start(e, { mode: 'rotate', key: selected, part: sel })}
+            onDoubleClick={() => setPart(selected, { rot: 0 })}
           />
         </g>
       )}
     </svg>
+  );
+}
+
+/** 見た目は小さい丸、当たり判定は指でつかめる大きさ */
+function Handle({ at, className, ...on }: { at: [number, number]; className: string } & React.SVGProps<SVGCircleElement>) {
+  return (
+    <g className={className}>
+      <circle cx={at[0]} cy={-at[1]} r={7} className="fe-hit" {...on} />
+      <circle cx={at[0]} cy={-at[1]} r={2.6} pointerEvents="none" />
+    </g>
   );
 }
 
