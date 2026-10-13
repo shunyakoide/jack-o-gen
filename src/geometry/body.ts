@@ -82,6 +82,7 @@ export interface Resolution {
   rings: number;
 }
 
+export const DRAFT_RES: Resolution = { theta: 64, rings: 28 };
 export const PREVIEW_RES: Resolution = { theta: 120, rings: 56 };
 export const EXPORT_RES: Resolution = { theta: 360, rings: 160 };
 

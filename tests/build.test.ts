@@ -10,7 +10,7 @@ import { decodeParams, encodeParams } from '../src/state/url';
 
 const wasm = await loadManifold();
 
-function summary(p: Params, q: 'preview' | 'export' = 'preview') {
+function summary(p: Params, q: 'draft' | 'preview' | 'export' = 'preview') {
   const r = buildPumpkin(wasm, p, q);
   const bad = r.checks.filter((c) => c.level !== 'green').map((c) => `${c.level}:${c.id}:${c.detail}`);
   return { r, bad };
@@ -76,6 +76,16 @@ describe('buildPumpkin', () => {
       const { r } = summary(p);
       const m = r.checks.find((c) => c.id === 'manifold')!;
       expect(m.level, `seed ${s}: ${m.detail}`).toBe('green');
+    }
+  });
+
+  it('draft（操作中プレビュー）でも全プリセットが manifold', () => {
+    for (const card of PRESET_CARDS) {
+      for (const mode of ['lantern', 'sealed'] as const) {
+        const { r } = summary({ ...card.make(42), mode }, 'draft');
+        const m = r.checks.find((c) => c.id === 'manifold')!;
+        expect(m.level, `${card.id} ${mode}: ${m.detail}`).toBe('green');
+      }
     }
   });
 

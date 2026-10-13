@@ -49,20 +49,25 @@ function Pumpkin() {
   );
 }
 
+let shadowSeq = 0;
+
 export function Viewer() {
   const building = useStore((s) => s.building);
   const preview = useStore((s) => s.preview);
   const error = useStore((s) => s.error);
   const h = preview?.stats.height ?? 120;
+  // 形状が届くたびに ContactShadows を作り直して焼き直す
+  const shadowKey = useMemo(() => ++shadowSeq, [preview]);
   return (
     <div className="viewer">
-      <Canvas camera={{ position: [0, h * 0.9, 260], fov: 35, near: 1, far: 5000 }} dpr={[1, 2]}>
+      {/* 操作中だけ描画（demand）。影は形状が変わったときに 1 回だけ焼く */}
+      <Canvas frameloop="demand" camera={{ position: [0, h * 0.9, 260], fov: 35, near: 1, far: 5000 }} dpr={[1, 1.5]}>
         <color attach="background" args={['#1b1420']} />
         <hemisphereLight args={['#ffe9d0', '#2a1830', 0.9]} />
         <directionalLight position={[120, 220, 160]} intensity={1.6} />
         <directionalLight position={[-160, 80, -120]} intensity={0.5} color="#a8b8ff" />
         <Pumpkin />
-        <ContactShadows position={[0, 0, 0]} opacity={0.55} scale={400} blur={2.4} far={200} />
+        <ContactShadows key={shadowKey} frames={1} position={[0, 0, 0]} opacity={0.55} scale={400} blur={2.4} far={200} />
         <gridHelper args={[256, 16, '#4a3a55', '#30263a']} position={[0, -0.05, 0]} />
         <OrbitControls target={[0, h * 0.45, 0]} makeDefault enableDamping minDistance={80} maxDistance={900} />
       </Canvas>

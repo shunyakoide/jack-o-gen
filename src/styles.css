@@ -67,14 +67,14 @@ h1, h3 { margin: 0; }
 
 .sheet-handle { display: none; }
 
-.presets { display: flex; gap: 8px; overflow-x: auto; padding: 10px 12px 6px; scrollbar-width: thin; }
+.presets { display: grid; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap: 6px; padding: 10px 12px 6px; }
 .preset {
-  flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 76px; padding: 8px 4px;
+  min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px;
   background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius);
 }
 .preset.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
 .preset-icon { font-size: 22px; }
-.preset-label { font-size: 11px; white-space: nowrap; }
+.preset-label { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 
 .tabs { display: flex; border-bottom: 1px solid var(--line); padding: 0 6px; }
 .tabs button {

@@ -1,14 +1,15 @@
 // 形状生成の全体：本体＋ヘタの union、顔の切り抜き／彫り込み、中空化、チェック。
 
 import type { Params } from '../model/params';
-import { buildBody, EXPORT_RES, FRONT_THETA, offsetInward, PREVIEW_RES, type Body } from './body';
+import { buildBody, DRAFT_RES, EXPORT_RES, FRONT_THETA, offsetInward, PREVIEW_RES, type Body } from './body';
 import { runChecks, type CheckItem, type CheckLevel } from './checks';
 import { FACE_REF_DIAMETER, layoutFace, subdivide, type FaceCheck } from './face/layout';
 import type { Pt } from './face/presets';
 import { Scope, type Manifold, type Wasm } from './manifold';
 import { buildStem } from './stem';
 
-export type Quality = 'preview' | 'export';
+// draft = スライダー操作中の粗いプレビュー
+export type Quality = 'draft' | 'preview' | 'export';
 export type PartKindId = 'body' | 'stem' | 'cut' | 'inner';
 
 export interface MeshGroup {
@@ -93,7 +94,7 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
   const scope = new Scope();
   try {
     const fine = quality === 'export';
-    const body: Body = buildBody(p, fine ? EXPORT_RES : PREVIEW_RES);
+    const body: Body = buildBody(p, fine ? EXPORT_RES : quality === 'draft' ? DRAFT_RES : PREVIEW_RES);
     const info = body.info;
     const bodyM = toManifold(wasm, scope, body.positions, body.indices);
     const stem = buildStem(p, info.zTop, fine);
@@ -111,7 +112,7 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
       minHole: MIN_HOLE,
       minLink: MIN_LINK,
     });
-    const contours = ((face.cs?.toPolygons() ?? []) as Pt[][]).map((poly) => subdivide(poly, fine ? 0.8 : 2.5));
+    const contours = ((face.cs?.toPolygons() ?? []) as Pt[][]).map((poly) => subdivide(poly, fine ? 0.8 : quality === 'draft' ? 5 : 2.5));
     const frame = { z: info.zCenter, rEq: info.rEq, rIn: info.rEq * (lantern ? 0.2 : 0.5), rOut: info.rMax * 1.7 };
     const frustum = radialFrustum(wasm, scope, contours, frame);
     if (frustum) ids[frustum.originalID()] = 'cut';
@@ -136,7 +137,9 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
       const cone = scope.keep(
         scope.keep(scope.keep(wasm.Manifold.cylinder(h, h, 0, fine ? 192 : 64)).translate([0, 0, zApex - h])).asOriginal(),
       );
-      const cavity = scope.keep(scope.keep(innerM.intersect(cone)).trimByPlane([0, 0, 1], p.floor));
+      // draft では天井の円錐カットを省く（外からはほぼ見えず、ブーリアン 1 回分速い）
+      const ceiling = quality === 'draft' ? innerM : scope.keep(innerM.intersect(cone));
+      const cavity = scope.keep(ceiling.trimByPlane([0, 0, 1], p.floor));
       const led = scope.keep(
         scope.keep(wasm.Manifold.cylinder(p.floor + 2, p.led / 2, p.led / 2, fine ? 128 : 48)).translate([0, 0, -1]),
       );
