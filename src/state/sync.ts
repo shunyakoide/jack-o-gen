@@ -1,6 +1,6 @@
 // パラメータ変更 → Worker でビルド（操作中は draft、停止後に preview。最新の要求だけを処理）、URL 同期。
 import { useEffect } from 'react';
-import { geometry } from '../worker/client';
+import { callWorker } from '../worker/client';
 import { useStore } from './store';
 import { encodeParams } from './url';
 import type { Params } from '../model/params';
@@ -16,7 +16,7 @@ export function useAutoBuild() {
       busy = true;
       useStore.getState().setBuilding(true);
       try {
-        const r = await geometry().build(p, q);
+        const r = await callWorker((g) => g.build(p, q), 30_000);
         useStore.getState().setPreview(r);
       } catch (e) {
         console.error(e);

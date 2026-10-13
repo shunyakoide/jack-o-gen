@@ -110,8 +110,22 @@ button.badge:hover { background: var(--panel-3); }
 }
 .viewer-status:empty { display: none; }
 .viewer-status .err { color: var(--red); }
+.viewer-msg {
+  position: absolute; inset: 0; z-index: 1; margin: auto; height: fit-content; max-width: 340px; padding: 0 20px;
+  text-align: center; line-height: 1.6; color: var(--muted); pointer-events: none;
+}
+.viewer-msg.err { color: var(--text); }
+.viewer-msg.pulse { animation: pulse 1.4s ease-in-out infinite alternate; }
 
 .sheet-handle { display: none; }
+
+.first-hint {
+  display: flex; align-items: center; gap: 8px; margin: 10px 12px 0; padding: 6px 6px 6px 12px; font-size: 13px; line-height: 1.4;
+  background: rgba(236, 122, 36, 0.1); border: 1px solid rgba(236, 122, 36, 0.45); border-radius: var(--radius-sm); color: var(--accent-2);
+}
+.first-hint span { flex: 1; }
+.first-hint-close { background: none; border: none; color: var(--muted); font-size: 18px; line-height: 1; padding: 2px 8px; }
+.first-hint-close:hover { color: var(--text); }
 
 .presets { display: grid; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap: 6px; padding: 12px 12px 8px; }
 .preset {
@@ -257,12 +271,11 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
 .stats dd.yellow { color: var(--yellow); }
 .stats dd.red { color: var(--red); }
 
-.modal-backdrop {
-  position: fixed; inset: 0; background: rgba(10, 5, 14, 0.62); backdrop-filter: blur(4px);
-  display: grid; place-items: center; z-index: 50; padding: 16px; animation: fade 0.2s var(--ease);
-}
-.modal {
-  background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px; max-width: 420px;
+/* ::backdrop は古いブラウザで :root の変数を継承しないので値を直書きする */
+.modal::backdrop { background: rgba(10, 5, 14, 0.62); backdrop-filter: blur(4px); animation: fade 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.modal[open] {
+  background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 16px; padding: 20px;
+  width: calc(100% - 32px); max-width: 420px;
   display: flex; flex-direction: column; gap: 12px; animation: rise 0.28s var(--ease);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 24px 60px -12px var(--shadow), 0 0 50px -20px var(--glow);
 }
@@ -278,6 +291,7 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
 
 @keyframes fade { from { opacity: 0; } }
 @keyframes rise { from { opacity: 0; transform: translateY(10px) scale(0.98); } }
+@keyframes pulse { from { opacity: 0.45; } }
 @keyframes toast { from { opacity: 0; transform: translate(-50%, 10px); } }
 
 /* モバイル：プレビューを上に固定し、パネルを下からのボトムシートにする */
@@ -300,6 +314,12 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
   .topbar h1 span { font-size: 17px; }
   .topbar-actions { gap: 6px; }
   .topbar-actions .ghost { padding: 6px 9px; }
+  /* 出力タブのダウンロードボタンはスクロールせずに押せるようシート下端に貼り付ける。
+     .export を contents にして、sticky の範囲をタブ全体（.tab-body）に広げる。
+     sticky の基準はスクロール領域の padding 内側なので、下 padding をボタン周りの塗り（12px）以下にして隙間から中身が覗かないようにする */
+  .tab-body { padding-bottom: 10px; }
+  .export { display: contents; }
+  .export > .primary { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 0 0 12px var(--panel); }
 }
 
 .group { display: flex; flex-direction: column; gap: 12px; }
@@ -319,5 +339,5 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
 .stem-card.on { border-color: var(--accent); color: var(--accent-2); box-shadow: 0 0 0 1px var(--accent) inset; background: rgba(236, 122, 36, 0.1); }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition: none !important; }
+  *, *::before, *::after, ::backdrop { animation: none !important; transition: none !important; }
 }

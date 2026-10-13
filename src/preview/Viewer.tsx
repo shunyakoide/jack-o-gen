@@ -1,11 +1,12 @@
 // 3D プレビュー（react-three-fiber + drei）。ジオメトリは z 上の mm 座標で届く。
 import { Canvas, useThree } from '@react-three/fiber';
 import { ContactShadows, OrbitControls } from '@react-three/drei';
-import { useEffect, useMemo } from 'react';
+import { Component, useEffect, useMemo, type ReactNode } from 'react';
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { MeshGroup, PartKindId } from '../geometry/build';
 import { boxOf, printLayout, type Box } from '../geometry/layout';
+import { useT } from '../i18n';
 import { useStore } from '../state/store';
 
 const KIND_ORDER: PartKindId[] = ['body', 'stem', 'cut', 'inner'];
@@ -77,7 +78,22 @@ function FitCamera({ width, h, layoutKey }: { width: number; h: number; layoutKe
   return null;
 }
 
+/** WebGL が使えない・3D ビューが落ちたときに画面全体を巻き込まず案内を出す */
+class CanvasBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch(e: unknown) {
+    console.error(e);
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
+
 export function Viewer() {
+  const t = useT();
   const building = useStore((s) => s.building);
   const preview = useStore((s) => s.preview);
   const error = useStore((s) => s.error);
@@ -91,19 +107,24 @@ export function Viewer() {
   return (
     <div className="viewer">
       {/* 操作中だけ描画（demand）。影は形状が変わったときに 1 回だけ焼く */}
-      <Canvas frameloop="demand" camera={{ position: [0, h * 0.9, 260], fov: 35, near: 1, far: 5000 }} dpr={[1, 1.5]} gl={{ alpha: true }}>
-        {/* 背景は .stage の CSS グラデーション（灯り）を透かす */}
-        <hemisphereLight args={['#ffe9d0', '#2a1830', 0.9]} />
-        <directionalLight position={[120, 220, 160]} intensity={1.6} />
-        <directionalLight position={[-160, 80, -120]} intensity={0.5} color="#a8b8ff" />
-        <Pumpkin />
-        <ContactShadows key={shadowKey} frames={1} position={[0, 0, 0]} opacity={0.55} scale={400} blur={2.4} far={200} />
-        <gridHelper args={[256, 16, '#463650', '#2a2033']} position={[0, -0.05, 0]} />
-        <OrbitControls target={[0, h * 0.45, 0]} makeDefault enableDamping minDistance={80} maxDistance={900} />
-        <FitCamera width={layoutWidth} h={h} layoutKey={`${printTab}-${!!layoutStem}`} />
-      </Canvas>
+      <CanvasBoundary fallback={<p className="viewer-msg err">{t('viewerError')}</p>}>
+        <Canvas frameloop="demand" camera={{ position: [0, h * 0.9, 260], fov: 35, near: 1, far: 5000 }} dpr={[1, 1.5]} gl={{ alpha: true }}>
+          {/* 背景は .stage の CSS グラデーション（灯り）を透かす */}
+          <hemisphereLight args={['#ffe9d0', '#2a1830', 0.9]} />
+          <directionalLight position={[120, 220, 160]} intensity={1.6} />
+          <directionalLight position={[-160, 80, -120]} intensity={0.5} color="#a8b8ff" />
+          <Pumpkin />
+          <ContactShadows key={shadowKey} frames={1} position={[0, 0, 0]} opacity={0.55} scale={400} blur={2.4} far={200} />
+          <gridHelper args={[256, 16, '#463650', '#2a2033']} position={[0, -0.05, 0]} />
+          <OrbitControls target={[0, h * 0.45, 0]} makeDefault enableDamping minDistance={80} maxDistance={900} />
+          <FitCamera width={layoutWidth} h={h} layoutKey={`${printTab}-${!!layoutStem}`} />
+        </Canvas>
+        {/* 初回ビルドが終わるまでは空の画面にせず、計算中（失敗時はその旨）を中央に出す */}
+        {!preview && <p className={`viewer-msg ${error ? 'err' : 'pulse'}`}>{t(error ? 'buildError' : 'building')}</p>}
+      </CanvasBoundary>
       <div className="viewer-status">
-        {error ? <span className="err">Error</span> : building ? <span>…</span> : preview ? (
+        {/* 形がまだ無いときは中央に同じ文言が出るので、ここでは出さない */}
+        {error ? preview && <span className="err" title={error}>{t('buildError')}</span> : building ? <span>…</span> : preview ? (
           <span>
             {preview.stats.width.toFixed(0)}×{preview.stats.depth.toFixed(0)}×{preview.stats.height.toFixed(0)} mm
           </span>
