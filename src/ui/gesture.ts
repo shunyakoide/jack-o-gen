@@ -2,12 +2,13 @@ import { beginGesture, endGesture } from '../state/store';
 
 /**
  * 押してから離すまで（ドラッグ・キー長押し）の変更を元に戻すの 1 手にまとめる。
- * 離したのがどの要素でも終わるよう window で待つ（blur では切らない：押した瞬間に前の要素の blur が来るため）
+ * 離したのがどの要素でも終わるよう window で待つ。要素の blur では切らない（押した瞬間に前の要素の blur が来るため）。
+ * window の blur（アプリ切り替えで keyup / pointerup が来ない）では終える。要素の blur は window まで伝わらない
  */
 export function holdGesture(e: { type: string }) {
   beginGesture();
   // 同じ関数の重複登録はブラウザが無視する
-  for (const t of e.type === 'keydown' ? ['keyup'] : ['pointerup', 'pointercancel']) {
+  for (const t of e.type === 'keydown' ? ['keyup', 'blur'] : ['pointerup', 'pointercancel', 'blur']) {
     addEventListener(t, endGesture, { once: true });
   }
 }
