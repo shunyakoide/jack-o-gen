@@ -1,7 +1,7 @@
 // 形状生成の全体：本体＋ヘタの union、顔の切り抜き／彫り込み、中空化、チェック。
 
 import type { Params } from '../model/params';
-import { buildBody, DRAFT_RES, EXPORT_RES, FRONT_THETA, offsetInward, PREVIEW_RES, type Body } from './body';
+import { buildBody, DRAFT_RES, EXPORT_RES, FRONT_THETA, offsetInward, PREVIEW_RES, type Body, type BodyInfo } from './body';
 import { runChecks, type CheckItem, type CheckLevel } from './checks';
 import { FACE_REF_DIAMETER, layoutFace, subdivide, type FaceCheck } from './face/layout';
 import type { Pt } from './face/presets';
@@ -106,6 +106,143 @@ function radialFrustum(wasm: Wasm, scope: Scope, contours: Pt[][], c: Parameters
   return toManifold(wasm, scope, pos, new Uint32Array(idx));
 }
 
+/** WASM・解放用スコープ・部位の対応表（originalID → 表示グループ）をまとめて渡す */
+interface Ctx {
+  wasm: Wasm;
+  scope: Scope;
+  ids: Record<number, PartKindId>;
+}
+
+/** 顔の 2D レイアウトを、中心から外向きの切り抜き用ソリッドにする */
+function faceCutter(c: Ctx, p: Params, info: BodyInfo, quality: Quality) {
+  const face = layoutFace(c.wasm, c.scope, p.face, {
+    scale: p.diameter / FACE_REF_DIAMETER,
+    arch: p.arch > 0,
+    bridge: p.bridge,
+    checkScale: (info.rEq - p.wall) / info.rEq,
+    minHole: MIN_HOLE,
+    minLink: MIN_LINK,
+  });
+  const maxLen = quality === 'export' ? 0.8 : quality === 'draft' ? 5 : 2.5;
+  const contours = ((face.cs?.toPolygons() ?? []) as Pt[][]).map((poly) => subdivide(poly, maxLen));
+  const frame = { z: info.zCenter, rEq: info.rEq, rIn: info.rEq * 0.2, rOut: info.rMax * 1.7 };
+  const frustum = radialFrustum(c.wasm, c.scope, contours, frame);
+  if (frustum) c.ids[frustum.originalID()] = 'cut';
+  return { frustum, check: face.check as FaceCheck };
+}
+
+/**
+ * 中空部（床の上から内天井まで）。zCeil は中央の平らな内天井の高さ
+ * （座ぐりが内天井を突き破らないよう深さを制限するのに使う）
+ */
+function cavityOf(c: Ctx, p: Params, body: Body) {
+  const info = body.info;
+  const inner = offsetInward(body, p.wall);
+  // 底面リングと底面中心を下へ延ばし、床は平面カットで作る
+  const nt = body.nTheta;
+  const firstBottom = 1 + (body.rings - 1) * nt;
+  for (let v = firstBottom; v < inner.length / 3; v++) inner[v * 3 + 2] = -1;
+  // 内天井の円錐（水平から約 20° = 70° オーバーハング）。経線を赤道から上へたどり、
+  // 内面がこの傾きより寝始めた点から上だけを円錐で埋める。それより下は壁厚一定のまま。
+  // 中心（ヘタのくぼみ）は半径 bridgeR までの平らな天井にしてブリッジで渡す。
+  // 円錐を中心の最低点から始めずに済むので、平たい形でも肩が厚くならない
+  const k = CEIL_SLOPE;
+  const bridgeR = Math.min(BRIDGE_R, 0.42 * info.rEq);
+  const rOf = (v: number) => Math.hypot(inner[v * 3], inner[v * 3 + 1]);
+  const zk = (v: number) => inner[v * 3 + 2] + k * rOf(v);
+  let zCap = inner[2];
+  for (let v = 1; v < inner.length / 3; v++) {
+    if (inner[v * 3 + 2] >= info.zCenter && rOf(v) <= bridgeR) zCap = Math.min(zCap, inner[v * 3 + 2]);
+  }
+  let zApex = zCap + k * bridgeR;
+  for (let i = 0; i < nt; i++) {
+    let flat = false;
+    for (let j = body.rings; j >= 1; j--) {
+      const v = 1 + (j - 1) * nt + i;
+      if (inner[v * 3 + 2] < info.zCenter) continue;
+      // 上の点（j=1 は極）へ向かって z + k·r が減る = 円錐より寝ている
+      if (!flat) flat = zk(j > 1 ? v - nt : 0) < zk(v);
+      if (flat && rOf(v) > bridgeR) zApex = Math.min(zApex, zk(v));
+    }
+  }
+  // 円錐より上にある内面の頂点を円錐面まで下ろす。多角形の円錐と intersect すると、
+  // 円錐が内面にほぼ接する所で交線がギザギザになり、円錐の細長い面も残るため、内面のメッシュのまま形を作る
+  for (let v = 0; v < inner.length / 3; v++) inner[v * 3 + 2] = Math.min(inner[v * 3 + 2], zApex - k * rOf(v));
+  const innerM = toManifold(c.wasm, c.scope, inner, body.indices);
+  c.ids[innerM.originalID()] = 'inner';
+  const cavity = c.scope.keep(c.scope.keep(innerM.trimByPlane([0, 0, -1], -zCap)).trimByPlane([0, 0, 1], p.floor));
+  return { cavity, zCeil: zCap };
+}
+
+/** 底の LED 用の穴 */
+function ledHole(c: Ctx, p: Params, fine: boolean): Manifold {
+  const led = c.scope.keep(
+    c.scope.keep(c.wasm.Manifold.cylinder(p.floor + 2, p.led / 2, p.led / 2, fine ? 128 : 48)).translate([0, 0, -1]),
+  );
+  const ledId = c.scope.keep(led.asOriginal());
+  c.ids[ledId.originalID()] = 'inner';
+  return ledId;
+}
+
+/** 差し込み式：本体に座ぐりとピン、ヘタに座面と穴を加える */
+function addPeg(c: Ctx, p: Params, body: Body, stemM: Manifold, result: Manifold, rf: number, zCeil: number, fine: boolean) {
+  const { wasm, scope } = c;
+  const info = body.info;
+  const seg = fine ? 128 : 48;
+  // 座面：ヘタの足元の範囲で外形がいちばん低い高さ。ランタンでは内天井から壁厚ぶん上までに留める
+  let zSeat = Infinity;
+  const bp = body.positions;
+  for (let v = 0; v < bp.length / 3; v++) {
+    if (bp[v * 3 + 2] > info.zCenter && Math.hypot(bp[v * 3], bp[v * 3 + 1]) <= rf) zSeat = Math.min(zSeat, bp[v * 3 + 2]);
+  }
+  zSeat = Math.max(zSeat, zCeil + p.wall);
+  const seat = scope.keep(scope.keep(scope.keep(wasm.Manifold.cylinder(info.zTop + 10, rf, rf, seg)).translate([0, 0, zSeat])).asOriginal());
+  const peg = stemPin(p, info.zTop, zSeat);
+  const { rp, hp } = peg;
+  // ピンは座面より 0.5 mm 下から生やして本体と確実に重ねる。先端は面取りして差し込みやすく
+  const tip = Math.min(1, hp / 2);
+  const pinProfile: [number, number][] = [[0, -0.5], [rp, -0.5], [rp, hp - tip], [rp - 0.4 * tip, hp], [0, hp]];
+  const pin = scope.keep(scope.keep(scope.keep(wasm.Manifold.revolve([pinProfile], seg)).translate([0, 0, zSeat])).asOriginal());
+  c.ids[seat.originalID()] = 'body';
+  c.ids[pin.originalID()] = 'body';
+  const withPin = scope.keep(scope.keep(result.subtract(seat)).add(pin));
+
+  // ヘタ側：座面で平らに切り、ピン用の穴（すき間・深さの余裕は FIT）をあける。入口は 45° に面取り
+  const rh = rp + FIT.pinClear;
+  const ch = FIT.chamfer;
+  const holeProfile: [number, number][] = [[0, -1], [rh + ch + 1, -1], [rh, ch], [rh, hp + FIT.holeExtra], [0, hp + FIT.holeExtra]];
+  const hole = scope.keep(scope.keep(wasm.Manifold.revolve([holeProfile], seg)).translate([0, 0, zSeat]));
+  const stemOut = scope.keep(scope.keep(stemM.trimByPlane([0, 0, 1], zSeat)).subtract(hole)).getMesh();
+  const stem = { positions: xyz(stemOut), indices: new Uint32Array(stemOut.triVerts), seatZ: zSeat };
+  return { result: withPin, peg, stem };
+}
+
+/** CSG の数値誤差で出る体積ほぼ 0 の破片は捨てる */
+function dropSlivers(c: Ctx, result: Manifold) {
+  const parts = result.decompose();
+  parts.forEach((m) => c.scope.keep(m));
+  const solidParts = parts.filter((m) => m.volume() > 0.5);
+  const kept = solidParts.length !== parts.length ? c.scope.keep(c.wasm.Manifold.compose(solidParts)) : result;
+  return { result: kept, components: solidParts.length };
+}
+
+/** manifold の run（元の部品ごとの三角形の並び）を表示グループにまとめる */
+function meshGroups(mesh: { runIndex: Uint32Array; runOriginalID: Uint32Array }, ids: Ctx['ids']): MeshGroup[] {
+  const groups: MeshGroup[] = [];
+  const runIndex = mesh.runIndex;
+  const runId = mesh.runOriginalID;
+  for (let r = 0; r < runId.length; r++) {
+    const start = runIndex[r];
+    const count = runIndex[r + 1] - start;
+    if (count <= 0) continue;
+    const kind = ids[runId[r]] ?? 'inner';
+    const last = groups[groups.length - 1];
+    if (last && last.kind === kind && last.start + last.count === start) last.count += count;
+    else groups.push({ start, count, kind });
+  }
+  return groups;
+}
+
 export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResult {
   const t0 = performance.now();
   const scope = new Scope();
@@ -116,124 +253,28 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
     const bodyM = toManifold(wasm, scope, body.positions, body.indices);
     const stem = buildStem(p, info.zTop, fine);
     const stemM = toManifold(wasm, scope, stem.positions, stem.indices);
+    const c: Ctx = { wasm, scope, ids: { [bodyM.originalID()]: 'body', [stemM.originalID()]: 'stem' } };
     const rf = p.stemAttach === 'peg' ? stemSeatRadius(p) : null;
-    const seg = fine ? 128 : 48;
     // 差し込み式では本体とヘタを分ける（座ぐり・ピンは CSG の最後に加える）
     const solid = rf ? bodyM : scope.keep(bodyM.add(stemM));
-    // 中央の内天井の高さ（座ぐりが内天井を突き破らないよう深さを制限する）。draft も同じ値を使う
-    let zCeil = -Infinity;
-    const ids: Record<number, PartKindId> = { [bodyM.originalID()]: 'body', [stemM.originalID()]: 'stem' };
 
-    // 顔の 2D レイアウト
-    const face = layoutFace(wasm, scope, p.face, {
-      scale: p.diameter / FACE_REF_DIAMETER,
-      arch: p.arch > 0,
-      bridge: p.bridge,
-      checkScale: (info.rEq - p.wall) / info.rEq,
-      minHole: MIN_HOLE,
-      minLink: MIN_LINK,
-    });
-    const contours = ((face.cs?.toPolygons() ?? []) as Pt[][]).map((poly) => subdivide(poly, fine ? 0.8 : quality === 'draft' ? 5 : 2.5));
-    const frame = { z: info.zCenter, rEq: info.rEq, rIn: info.rEq * 0.2, rOut: info.rMax * 1.7 };
-    const frustum = radialFrustum(wasm, scope, contours, frame);
-    if (frustum) ids[frustum.originalID()] = 'cut';
-
-    const inner = offsetInward(body, p.wall);
-    // 底面リングと底面中心を下へ延ばし、床は平面カットで作る
-    const nt = body.nTheta;
-    const firstBottom = 1 + (body.rings - 1) * nt;
-    for (let v = firstBottom; v < inner.length / 3; v++) inner[v * 3 + 2] = -1;
-    // 内天井の円錐（水平から約 20° = 70° オーバーハング）。経線を赤道から上へたどり、
-    // 内面がこの傾きより寝始めた点から上だけを円錐で埋める。それより下は壁厚一定のまま。
-    // 中心（ヘタのくぼみ）は半径 bridgeR までの平らな天井にしてブリッジで渡す。
-    // 円錐を中心の最低点から始めずに済むので、平たい形でも肩が厚くならない
-    const k = CEIL_SLOPE;
-    const bridgeR = Math.min(BRIDGE_R, 0.42 * info.rEq);
-    const rOf = (v: number) => Math.hypot(inner[v * 3], inner[v * 3 + 1]);
-    const zk = (v: number) => inner[v * 3 + 2] + k * rOf(v);
-    let zCap = inner[2];
-    for (let v = 1; v < inner.length / 3; v++) {
-      if (inner[v * 3 + 2] >= info.zCenter && rOf(v) <= bridgeR) zCap = Math.min(zCap, inner[v * 3 + 2]);
-    }
-    zCeil = zCap;
-    let zApex = zCap + k * bridgeR;
-    for (let i = 0; i < nt; i++) {
-      let flat = false;
-      for (let j = body.rings; j >= 1; j--) {
-        const v = 1 + (j - 1) * nt + i;
-        if (inner[v * 3 + 2] < info.zCenter) continue;
-        // 上の点（j=1 は極）へ向かって z + k·r が減る = 円錐より寝ている
-        if (!flat) flat = zk(j > 1 ? v - nt : 0) < zk(v);
-        if (flat && rOf(v) > bridgeR) zApex = Math.min(zApex, zk(v));
-      }
-    }
-    // 円錐より上にある内面の頂点を円錐面まで下ろす。多角形の円錐と intersect すると、
-    // 円錐が内面にほぼ接する所で交線がギザギザになり、円錐の細長い面も残るため、内面のメッシュのまま形を作る
-    for (let v = 0; v < inner.length / 3; v++) inner[v * 3 + 2] = Math.min(inner[v * 3 + 2], zApex - k * rOf(v));
-    const innerM = toManifold(wasm, scope, inner, body.indices);
-    ids[innerM.originalID()] = 'inner';
-    const cavity = scope.keep(scope.keep(innerM.trimByPlane([0, 0, -1], -zCap)).trimByPlane([0, 0, 1], p.floor));
-    const led = scope.keep(
-      scope.keep(wasm.Manifold.cylinder(p.floor + 2, p.led / 2, p.led / 2, fine ? 128 : 48)).translate([0, 0, -1]),
-    );
-    const ledId = led.asOriginal();
-    scope.keep(ledId);
-    ids[ledId.originalID()] = 'inner';
-    const cutters = [cavity, ledId];
-    if (frustum) cutters.push(frustum);
+    const face = faceCutter(c, p, info, quality);
+    const { cavity, zCeil } = cavityOf(c, p, body);
+    const cutters = [cavity, ledHole(c, p, fine)];
+    if (face.frustum) cutters.push(face.frustum);
     let result: Manifold = scope.keep(solid.subtract(scope.keep(wasm.Manifold.union(cutters))));
 
     let stemPart: BuildResult['stem'];
     let peg: ReturnType<typeof stemPin> | null = null;
-    if (rf) {
-      // 座面：ヘタの足元の範囲で外形がいちばん低い高さ。ランタンでは内天井から壁厚ぶん上までに留める
-      let zSeat = Infinity;
-      const bp = body.positions;
-      for (let v = 0; v < bp.length / 3; v++) {
-        if (bp[v * 3 + 2] > info.zCenter && Math.hypot(bp[v * 3], bp[v * 3 + 1]) <= rf) zSeat = Math.min(zSeat, bp[v * 3 + 2]);
-      }
-      zSeat = Math.max(zSeat, zCeil + p.wall);
-      const seat = scope.keep(scope.keep(scope.keep(wasm.Manifold.cylinder(info.zTop + 10, rf, rf, seg)).translate([0, 0, zSeat])).asOriginal());
-      peg = stemPin(p, info.zTop, zSeat);
-      const { rp, hp } = peg;
-      // ピンは座面より 0.5 mm 下から生やして本体と確実に重ねる。先端は面取りして差し込みやすく
-      const c = Math.min(1, hp / 2);
-      const pinProfile: [number, number][] = [[0, -0.5], [rp, -0.5], [rp, hp - c], [rp - 0.4 * c, hp], [0, hp]];
-      const pin = scope.keep(scope.keep(scope.keep(wasm.Manifold.revolve([pinProfile], seg)).translate([0, 0, zSeat])).asOriginal());
-      ids[seat.originalID()] = 'body';
-      ids[pin.originalID()] = 'body';
-      result = scope.keep(scope.keep(result.subtract(seat)).add(pin));
+    if (rf) ({ result, peg, stem: stemPart } = addPeg(c, p, body, stemM, result, rf, zCeil, fine));
 
-      // ヘタ側：座面で平らに切り、ピン用の穴（すき間・深さの余裕は FIT）をあける。入口は 45° に面取り
-      const rh = rp + FIT.pinClear;
-      const ch = FIT.chamfer;
-      const holeProfile: [number, number][] = [[0, -1], [rh + ch + 1, -1], [rh, ch], [rh, hp + FIT.holeExtra], [0, hp + FIT.holeExtra]];
-      const hole = scope.keep(scope.keep(wasm.Manifold.revolve([holeProfile], seg)).translate([0, 0, zSeat]));
-      const stemOut = scope.keep(scope.keep(stemM.trimByPlane([0, 0, 1], zSeat)).subtract(hole)).getMesh();
-      stemPart = { positions: xyz(stemOut), indices: new Uint32Array(stemOut.triVerts), seatZ: zSeat };
-    }
-
-    // CSG の数値誤差で出る体積ほぼ 0 の破片は捨てる
-    const parts = result.decompose();
-    parts.forEach((m) => scope.keep(m));
-    const solidParts = parts.filter((m) => m.volume() > 0.5);
-    if (solidParts.length !== parts.length) result = scope.keep(wasm.Manifold.compose(solidParts));
+    const cleaned = dropSlivers(c, result);
+    result = cleaned.result;
 
     const mesh = result.getMesh();
     const positions = xyz(mesh);
     const indices = new Uint32Array(mesh.triVerts);
-    const groups: MeshGroup[] = [];
-    const runIndex = mesh.runIndex;
-    const runId = mesh.runOriginalID;
-    for (let r = 0; r < runId.length; r++) {
-      const start = runIndex[r];
-      const count = runIndex[r + 1] - start;
-      if (count <= 0) continue;
-      const kind = ids[runId[r]] ?? 'inner';
-      const last = groups[groups.length - 1];
-      if (last && last.kind === kind && last.start + last.count === start) last.count += count;
-      else groups.push({ start, count, kind });
-    }
+    const groups = meshGroups(mesh, c.ids);
 
     const bb = result.boundingBox();
     const stats: BuildStats = {
@@ -255,11 +296,11 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
     const { items, level } = runChecks(p, {
       status: result.status(),
       empty: result.isEmpty(),
-      components: solidParts.length,
+      components: cleaned.components,
       stats,
       bed,
       peg,
-      face: face.check as FaceCheck,
+      face: face.check,
     });
     stats.ms = performance.now() - t0;
     return { positions, indices, groups, checks: items, level, stats, ...(stemPart && { stem: stemPart }) };
