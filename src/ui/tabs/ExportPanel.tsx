@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { useT } from '../../i18n';
 import { useStore } from '../../state/store';
 import { geometry } from '../../worker/client';
-import { LEVEL_TEXT } from '../CheckBadge';
+import { CheckList } from '../CheckBadge';
 import { LedNotice } from './LedNotice';
 
 function download(buf: ArrayBuffer, name: string) {
@@ -14,6 +15,7 @@ function download(buf: ArrayBuffer, name: string) {
 }
 
 export function ExportPanel() {
+  const t = useT();
   const params = useStore((s) => s.params);
   const preview = useStore((s) => s.preview);
   const [confirm, setConfirm] = useState(false);
@@ -29,13 +31,13 @@ export function ExportPanel() {
     try {
       const { stl, result } = await geometry().exportStl(params);
       if (result.level === 'red') {
-        setMsg('高解像度の生成結果が出力不可の判定になりました。チェック結果を確認してください。');
+        setMsg(t('exportRed'));
       } else {
         download(stl, name);
-        setMsg(`書き出しました（${result.stats.triangles.toLocaleString()} 面、${(result.stats.ms / 1000).toFixed(1)} 秒）`);
+        setMsg(t('exportDone', { n: result.stats.triangles.toLocaleString(), s: (result.stats.ms / 1000).toFixed(1) }));
       }
     } catch (e) {
-      setMsg(`書き出しに失敗しました：${String(e)}`);
+      setMsg(t('exportFail', { e: String(e) }));
     } finally {
       setBusy(false);
     }
@@ -44,30 +46,33 @@ export function ExportPanel() {
   return (
     <div className="export">
       {preview && (
-        <dl className="stats">
-          <dt>サイズ</dt>
-          <dd>
-            {preview.stats.width.toFixed(0)} × {preview.stats.depth.toFixed(0)} × {preview.stats.height.toFixed(0)} mm
-          </dd>
-          <dt>判定</dt>
-          <dd className={preview.level}>{LEVEL_TEXT[preview.level]}</dd>
-        </dl>
+        <p className="size-line">
+          {t('size')}: {preview.stats.width.toFixed(0)} × {preview.stats.depth.toFixed(0)} × {preview.stats.height.toFixed(0)} mm
+        </p>
       )}
-      <p className="hint">書き出し時は高解像度で作り直してから CSG を実行します（数秒かかります）。想定：Bambu Lab A1・ノズル0.4mm・PLA。</p>
       <button className="primary" disabled={busy || red || !preview} onClick={() => (params.mode === 'lantern' ? setConfirm(true) : doExport())}>
-        {busy ? '生成中…' : red ? '出力不可の項目があります' : 'STLをダウンロード'}
+        {busy ? t('generating') : red ? t('blocked') : t('download')}
       </button>
       {msg && <p className="hint">{msg}</p>}
+      <p className="hint">{t('exportHint')}</p>
+      {preview && (
+        <details className="advanced" open={preview.level !== 'green'} key={preview.level}>
+          <summary>
+            {t('checksTitle')} — {t(`level.${preview.level}`)}
+          </summary>
+          <CheckList />
+        </details>
+      )}
       {confirm && (
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="led-title">
           <div className="modal">
-            <h3 id="led-title">ダウンロードの前に</h3>
+            <h3 id="led-title">{t('beforeDownload')}</h3>
             <LedNotice />
-            <p>中には必ず LED キャンドルを使ってください。</p>
+            <p>{t('useLed')}</p>
             <div className="modal-actions">
-              <button onClick={() => setConfirm(false)}>キャンセル</button>
+              <button onClick={() => setConfirm(false)}>{t('cancel')}</button>
               <button className="primary" onClick={doExport}>
-                理解してダウンロード
+                {t('agree')}
               </button>
             </div>
           </div>

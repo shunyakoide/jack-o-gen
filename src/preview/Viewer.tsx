@@ -67,7 +67,7 @@ export function Viewer() {
         <OrbitControls target={[0, h * 0.45, 0]} makeDefault enableDamping minDistance={80} maxDistance={900} />
       </Canvas>
       <div className="viewer-status">
-        {error ? <span className="err">生成エラー</span> : building ? <span>計算中…</span> : preview ? (
+        {error ? <span className="err">Error</span> : building ? <span>…</span> : preview ? (
           <span>
             {preview.stats.width.toFixed(0)}×{preview.stats.depth.toFixed(0)}×{preview.stats.height.toFixed(0)} mm
           </span>

@@ -1,21 +1,21 @@
-import type { CheckLevel } from '../geometry/checks';
 import { useStore } from '../state/store';
-
-export const LEVEL_TEXT: Record<CheckLevel, string> = { green: '印刷OK', yellow: '警告あり', red: '出力不可' };
+import { useT } from '../i18n';
 
 export function CheckBadge() {
+  const t = useT();
   const preview = useStore((s) => s.preview);
   const setTab = useStore((s) => s.setTab);
-  if (!preview) return <span className="badge pending">チェック中</span>;
+  if (!preview) return <span className="badge pending">{t('checking')}</span>;
   return (
-    <button className={`badge ${preview.level}`} onClick={() => setTab('export')} title="チェック結果を見る">
+    <button className={`badge ${preview.level}`} onClick={() => setTab('print')} title={t('seeChecks')}>
       <span className="dot" aria-hidden />
-      {LEVEL_TEXT[preview.level]}
+      {t(`level.${preview.level}`)}
     </button>
   );
 }
 
 export function CheckList() {
+  const t = useT();
   const preview = useStore((s) => s.preview);
   if (!preview) return null;
   return (
@@ -24,8 +24,8 @@ export function CheckList() {
         <li key={c.id} className={c.level}>
           <span className="dot" aria-hidden />
           <div>
-            <div className="check-label">{c.label}</div>
-            <div className="check-detail">{c.detail}</div>
+            <div className="check-label">{t(`check.${c.id}`, c.vars)}</div>
+            <div className="check-detail">{t(`check.${c.id}.${c.detail}`, c.vars)}</div>
           </div>
         </li>
       ))}

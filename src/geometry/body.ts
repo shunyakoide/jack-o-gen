@@ -1,7 +1,7 @@
 // 本体外形：r(θ,φ) = R·P(φ)·(1 − d·G(u)·W(φ)) を経緯度グリッドで閉じたメッシュにする。
 // 座標系：mm、z が上（造形方向）、正面は −y 方向（θ = −π/2）。
 
-import type { Params } from '../model/params';
+import { TOP_SHARE, type Params } from '../model/params';
 import { hashSigned, sphereNoise } from './rng';
 
 export const FRONT_THETA = -Math.PI / 2;
@@ -52,7 +52,7 @@ export function radiusFn(p: Params) {
   return (theta: number, phi: number): number => {
     const c = Math.cos(phi);
     const s = Math.sin(phi);
-    const ch = c >= 0 ? p.topH : p.bottomH;
+    const ch = p.height * (c >= 0 ? TOP_SHARE : 1 - TOP_SHARE);
     // 超楕円体（上下で高さが別）＋卵形項
     let r = 1 / Math.pow(Math.pow(Math.abs(s), e) + Math.pow(Math.abs(c / ch), e), 1 / e);
     r *= 1 + p.egg * c;

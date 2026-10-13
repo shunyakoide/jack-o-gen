@@ -12,7 +12,6 @@ export interface PartShape {
 export interface PresetDef {
   id: string;
   kind: PartKind;
-  label: string;
   make: () => PartShape;
 }
 
@@ -58,18 +57,18 @@ function crescentMouth(opts: { thick: number; teethTop: number; teethBottom: num
 
 export const PRESETS: PresetDef[] = [
   // 目
-  { id: 'triangle', kind: 'eye', label: '三角目', make: () => ({ holes: [[[-1, -1], [1, -1], [0, 1]]], islands: [] }) },
-  { id: 'round', kind: 'eye', label: 'まる目', make: () => ({ holes: [ellipse(0, 0, 1, 1)], islands: [] }) },
+  { id: 'triangle', kind: 'eye', make: () => ({ holes: [[[-1, -1], [1, -1], [0, 1]]], islands: [] }) },
+  { id: 'round', kind: 'eye', make: () => ({ holes: [ellipse(0, 0, 1, 1)], islands: [] }) },
   {
     id: 'angry',
     kind: 'eye',
-    label: 'つり目',
+   
     make: () => ({ holes: [[[-1, -0.7], [0.7, -1], [1, 0.3], [-0.9, 1]]], islands: [] }),
   },
   {
     id: 'happy',
     kind: 'eye',
-    label: 'にっこり目',
+   
     make: () => {
       const outer: Pt[] = [];
       const inner: Pt[] = [];
@@ -84,41 +83,41 @@ export const PRESETS: PresetDef[] = [
   {
     id: 'pupil',
     kind: 'eye',
-    label: '瞳つき',
+   
     make: () => ({ holes: [ellipse(0, 0, 1, 1)], islands: [ellipse(0.12, -0.1, 0.38, 0.38, 24)] }),
   },
-  { id: 'diamond', kind: 'eye', label: 'ひし形', make: () => ({ holes: [[[0, -1], [1, 0], [0, 1], [-1, 0]]], islands: [] }) },
-  { id: 'none', kind: 'eye', label: 'なし', make: () => ({ holes: [], islands: [] }) },
+  { id: 'diamond', kind: 'eye', make: () => ({ holes: [[[0, -1], [1, 0], [0, 1], [-1, 0]]], islands: [] }) },
+  { id: 'none', kind: 'eye', make: () => ({ holes: [], islands: [] }) },
 
   // 鼻
-  { id: 'triangle', kind: 'nose', label: '三角', make: () => ({ holes: [[[-1, -1], [1, -1], [0, 1]]], islands: [] }) },
-  { id: 'down', kind: 'nose', label: '逆三角', make: () => ({ holes: [[[0, -1], [1, 1], [-1, 1]]], islands: [] }) },
-  { id: 'round', kind: 'nose', label: 'まる', make: () => ({ holes: [ellipse(0, 0, 1, 1, 28)], islands: [] }) },
-  { id: 'none', kind: 'nose', label: 'なし', make: () => ({ holes: [], islands: [] }) },
+  { id: 'triangle', kind: 'nose', make: () => ({ holes: [[[-1, -1], [1, -1], [0, 1]]], islands: [] }) },
+  { id: 'down', kind: 'nose', make: () => ({ holes: [[[0, -1], [1, 1], [-1, 1]]], islands: [] }) },
+  { id: 'round', kind: 'nose', make: () => ({ holes: [ellipse(0, 0, 1, 1, 28)], islands: [] }) },
+  { id: 'none', kind: 'nose', make: () => ({ holes: [], islands: [] }) },
 
   // 口
   {
     id: 'jagged',
     kind: 'mouth',
-    label: 'ギザ歯',
+   
     make: () => ({ holes: [crescentMouth({ thick: 0.75, teethTop: 3, teethBottom: 2, toothH: 0.42 })], islands: [] }),
   },
   {
     id: 'smile',
     kind: 'mouth',
-    label: 'にっこり',
+   
     make: () => ({ holes: [crescentMouth({ thick: 0.7, teethTop: 0, teethBottom: 0, toothH: 0 })], islands: [] }),
   },
   {
     id: 'fangs',
     kind: 'mouth',
-    label: 'キバ',
+   
     make: () => ({ holes: [crescentMouth({ thick: 0.85, teethTop: 2, teethBottom: 0, toothH: 0.6 })], islands: [] }),
   },
   {
     id: 'grin',
     kind: 'mouth',
-    label: '歯ならび',
+   
     make: () => {
       const hole = ellipse(0, 0, 1, 0.75, 56);
       const teeth: Pt[][] = [];
@@ -129,8 +128,8 @@ export const PRESETS: PresetDef[] = [
       return { holes: [hole], islands: teeth };
     },
   },
-  { id: 'o', kind: 'mouth', label: 'おどろき', make: () => ({ holes: [ellipse(0, 0, 0.75, 1, 40)], islands: [] }) },
-  { id: 'none', kind: 'mouth', label: 'なし', make: () => ({ holes: [], islands: [] }) },
+  { id: 'o', kind: 'mouth', make: () => ({ holes: [ellipse(0, 0, 0.75, 1, 40)], islands: [] }) },
+  { id: 'none', kind: 'mouth', make: () => ({ holes: [], islands: [] }) },
 ];
 
 export function presetsFor(kind: PartKind): PresetDef[] {

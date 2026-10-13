@@ -4,8 +4,6 @@ import { mulberry32 } from '../geometry/rng';
 
 export interface PresetCard {
   id: string;
-  label: string;
-  hint: string;
   make: (seed: number) => Params;
 }
 
@@ -16,17 +14,13 @@ function withFace(face: Partial<FaceParams>): FaceParams {
 export const PRESET_CARDS: PresetCard[] = [
   {
     id: 'classic',
-    label: 'クラシック',
-    hint: '定番のジャック・オー・ランタン',
     make: () => defaultParams(),
   },
   {
     id: 'ghost',
-    label: 'おばけ',
-    hint: '縦長で少し歪んだ形',
     make: () => ({
       ...defaultParams(),
-      topH: 1.15, bottomH: 0.95, egg: 0.12, wobble: 0.06, superE: 2.0,
+      height: 2.1, egg: 0.12, wobble: 0.06, superE: 2.0,
       ribs: 8, ribDepth: 0.06, ribSharp: 1.6, twist: 25, ribJitter: 0.1,
       stemHeight: 0.16, stemBend: 0.55, stemRadius: 0.06, stemTwist: 70,
       diameter: 100,
@@ -39,11 +33,9 @@ export const PRESET_CARDS: PresetCard[] = [
   },
   {
     id: 'flat',
-    label: '平たい坊ちゃん',
-    hint: 'つぶれた丸い形',
     make: () => ({
       ...defaultParams(),
-      topH: 0.5, bottomH: 0.5, superE: 2.6, ribs: 12, ribDepth: 0.11, ribSharp: 2.2,
+      height: 1.0, superE: 2.6, ribs: 12, ribDepth: 0.11, ribSharp: 2.2,
       dimpleDepth: 0.06, stemHeight: 0.1, stemRadius: 0.1, stemTaper: 0.15, stemBend: 0.1,
       diameter: 140, flat: 0.55,
       face: withFace({
@@ -55,11 +47,9 @@ export const PRESET_CARDS: PresetCard[] = [
   },
   {
     id: 'kiku',
-    label: '和風菊座',
-    hint: '細かい筋と深い菊座',
     make: () => ({
       ...defaultParams(),
-      topH: 0.62, bottomH: 0.6, superE: 2.8, ribs: 18, ribDepth: 0.07, ribSharp: 0.55, ribFade: 0.4,
+      height: 1.22, superE: 2.8, ribs: 18, ribDepth: 0.07, ribSharp: 0.55, ribFade: 0.4,
       dimpleDepth: 0.13, dimpleWidth: 0.45, stemSides: 6, stemStar: 0.3, stemHeight: 0.12,
       stemRadius: 0.075, stemTaper: 0.2, stemBend: 0.15, stemTwist: 20,
       face: withFace({
@@ -71,8 +61,6 @@ export const PRESET_CARDS: PresetCard[] = [
   },
   {
     id: 'random',
-    label: 'ランダム',
-    hint: '押すたびに違う形',
     make: (seed) => {
       const rnd = mulberry32(seed);
       const base = defaultParams();
@@ -81,7 +69,7 @@ export const PRESET_CARDS: PresetCard[] = [
       const rand = (lo: number, hi: number) => lo + (hi - lo) * rnd();
       const half = (lo: number, hi: number) => Math.round(rand(lo, hi) * 2) / 2;
       Object.assign(out, {
-        topH: rand(0.5, 1.1), bottomH: rand(0.5, 0.95), superE: rand(1.9, 3), egg: rand(-0.1, 0.15),
+        height: rand(1.0, 2.05), superE: rand(1.9, 3), egg: rand(-0.1, 0.15),
         wobble: rand(0, 0.05), ribs: Math.round(rand(6, 18)), ribDepth: rand(0.04, 0.14),
         ribSharp: rand(0.5, 2.5), twist: rand(-40, 40), ribJitter: rand(0, 0.1),
         dimpleDepth: rand(0.03, 0.12), stemHeight: rand(0.1, 0.3), stemRadius: rand(0.05, 0.1),
