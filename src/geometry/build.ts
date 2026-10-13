@@ -1,14 +1,15 @@
 // 形状生成の全体：本体＋ヘタの union、顔の切り抜き／彫り込み、中空化、チェック。
 
 import type { Params } from '../model/params';
-import { buildBody, EXPORT_RES, FRONT_THETA, offsetInward, PREVIEW_RES, type Body } from './body';
+import { buildBody, DRAFT_RES, EXPORT_RES, FRONT_THETA, offsetInward, PREVIEW_RES, type Body } from './body';
 import { runChecks, type CheckItem, type CheckLevel } from './checks';
 import { FACE_REF_DIAMETER, layoutFace, subdivide, type FaceCheck } from './face/layout';
 import type { Pt } from './face/presets';
 import { Scope, type Manifold, type Wasm } from './manifold';
-import { buildStem } from './stem';
+import { buildStem, stemPeg } from './stem';
 
-export type Quality = 'preview' | 'export';
+// draft = スライダー操作中の粗いプレビュー
+export type Quality = 'draft' | 'preview' | 'export';
 export type PartKindId = 'body' | 'stem' | 'cut' | 'inner';
 
 export interface MeshGroup {
@@ -36,12 +37,29 @@ export interface BuildResult {
   checks: CheckItem[];
   level: CheckLevel;
   stats: BuildStats;
+  /** 差し込み式のときだけ：ヘタ単体（本体に差した位置の座標）。seatZ は平らな底面の z */
+  stem?: { positions: Float32Array; indices: Uint32Array; seatZ: number };
 }
 
 export const BED_LIMIT = 250;
 export const MIN_WALL = 1.2;
 export const MIN_HOLE = 2;
 export const MIN_LINK = 3;
+// ランタン内天井の傾き（tan 20°）。内側は見えないので 70° オーバーハングまで許す（壁厚一定を優先）
+export const CEIL_SLOPE = Math.tan((20 * Math.PI) / 180);
+// 内天井の中央をブリッジで渡す半径（Ø50 mm。内側なので多少の垂れは許容）
+export const BRIDGE_R = 25;
+
+/** manifold の頂点配列から xyz だけを取り出す */
+function xyz(mesh: { vertProperties: Float32Array; numProp: number }): Float32Array {
+  const out = new Float32Array((mesh.vertProperties.length / mesh.numProp) * 3);
+  for (let v = 0, n = out.length / 3; v < n; v++) {
+    out[v * 3] = mesh.vertProperties[v * mesh.numProp];
+    out[v * 3 + 1] = mesh.vertProperties[v * mesh.numProp + 1];
+    out[v * 3 + 2] = mesh.vertProperties[v * mesh.numProp + 2];
+  }
+  return out;
+}
 
 function toManifold(wasm: Wasm, scope: Scope, positions: Float32Array, indices: Uint32Array): Manifold {
   const mesh = new wasm.Mesh({ numProp: 3, vertProperties: positions, triVerts: indices });
@@ -93,67 +111,105 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
   const scope = new Scope();
   try {
     const fine = quality === 'export';
-    const body: Body = buildBody(p, fine ? EXPORT_RES : PREVIEW_RES);
+    const body: Body = buildBody(p, fine ? EXPORT_RES : quality === 'draft' ? DRAFT_RES : PREVIEW_RES);
     const info = body.info;
     const bodyM = toManifold(wasm, scope, body.positions, body.indices);
     const stem = buildStem(p, info.zTop, fine);
     const stemM = toManifold(wasm, scope, stem.positions, stem.indices);
-    const solid = scope.keep(bodyM.add(stemM));
+    const peg = p.stemAttach === 'peg' ? stemPeg(p) : null;
+    const seg = fine ? 128 : 48;
+    // 差し込み式では本体とヘタを分ける（座ぐり・ピンは CSG の最後に加える）
+    const solid = peg ? bodyM : scope.keep(bodyM.add(stemM));
+    // 中央の内天井の高さ（座ぐりが内天井を突き破らないよう深さを制限する）。draft も同じ値を使う
+    let zCeil = -Infinity;
     const ids: Record<number, PartKindId> = { [bodyM.originalID()]: 'body', [stemM.originalID()]: 'stem' };
 
     // 顔の 2D レイアウト
-    const lantern = p.mode === 'lantern';
     const face = layoutFace(wasm, scope, p.face, {
       scale: p.diameter / FACE_REF_DIAMETER,
       arch: p.arch > 0,
       bridge: p.bridge,
-      checkScale: lantern ? (info.rEq - p.wall) / info.rEq : 1,
+      checkScale: (info.rEq - p.wall) / info.rEq,
       minHole: MIN_HOLE,
       minLink: MIN_LINK,
     });
-    const contours = ((face.cs?.toPolygons() ?? []) as Pt[][]).map((poly) => subdivide(poly, fine ? 0.8 : 2.5));
-    const frame = { z: info.zCenter, rEq: info.rEq, rIn: info.rEq * (lantern ? 0.2 : 0.5), rOut: info.rMax * 1.7 };
+    const contours = ((face.cs?.toPolygons() ?? []) as Pt[][]).map((poly) => subdivide(poly, fine ? 0.8 : quality === 'draft' ? 5 : 2.5));
+    const frame = { z: info.zCenter, rEq: info.rEq, rIn: info.rEq * 0.2, rOut: info.rMax * 1.7 };
     const frustum = radialFrustum(wasm, scope, contours, frame);
     if (frustum) ids[frustum.originalID()] = 'cut';
 
-    let result: Manifold;
-    if (lantern) {
-      const inner = offsetInward(body, p.wall);
-      // 底面リングと底面中心を下へ延ばし、床は平面カットで作る
-      const nt = body.nTheta;
-      const firstBottom = 1 + (body.rings - 1) * nt;
-      for (let v = firstBottom; v < inner.length / 3; v++) inner[v * 3 + 2] = -1;
-      // 内天井の 45° 円錐：最大径より上の内面の点すべてより下に頂点を置く
-      let zApex = Infinity;
-      for (let v = 0; v < inner.length / 3; v++) {
-        const z = inner[v * 3 + 2];
-        if (z < info.zCenter) continue;
-        zApex = Math.min(zApex, z + Math.hypot(inner[v * 3], inner[v * 3 + 1]));
+    const inner = offsetInward(body, p.wall);
+    // 底面リングと底面中心を下へ延ばし、床は平面カットで作る
+    const nt = body.nTheta;
+    const firstBottom = 1 + (body.rings - 1) * nt;
+    for (let v = firstBottom; v < inner.length / 3; v++) inner[v * 3 + 2] = -1;
+    // 内天井の円錐（水平から約 20° = 70° オーバーハング）。経線を赤道から上へたどり、
+    // 内面がこの傾きより寝始めた点から上だけを円錐で埋める。それより下は壁厚一定のまま。
+    // 中心（ヘタのくぼみ）は半径 BRIDGE_R までの平らな天井にしてブリッジで渡す。
+    // 円錐を中心の最低点から始めずに済むので、平たい形でも肩が厚くならない
+    const k = CEIL_SLOPE;
+    const rOf = (v: number) => Math.hypot(inner[v * 3], inner[v * 3 + 1]);
+    const zk = (v: number) => inner[v * 3 + 2] + k * rOf(v);
+    let zCap = inner[2];
+    for (let v = 1; v < inner.length / 3; v++) {
+      if (inner[v * 3 + 2] >= info.zCenter && rOf(v) <= BRIDGE_R) zCap = Math.min(zCap, inner[v * 3 + 2]);
+    }
+    zCeil = zCap;
+    let zApex = zCap + k * BRIDGE_R;
+    for (let i = 0; i < nt; i++) {
+      let flat = false;
+      for (let j = body.rings; j >= 1; j--) {
+        const v = 1 + (j - 1) * nt + i;
+        if (inner[v * 3 + 2] < info.zCenter) continue;
+        // 上の点（j=1 は極）へ向かって z + k·r が減る = 円錐より寝ている
+        if (!flat) flat = zk(j > 1 ? v - nt : 0) < zk(v);
+        if (flat && rOf(v) > BRIDGE_R) zApex = Math.min(zApex, zk(v));
       }
-      const innerM = toManifold(wasm, scope, inner, body.indices);
-      ids[innerM.originalID()] = 'inner';
-      const h = zApex + 10;
-      const cone = scope.keep(
-        scope.keep(scope.keep(wasm.Manifold.cylinder(h, h, 0, fine ? 192 : 64)).translate([0, 0, zApex - h])).asOriginal(),
-      );
-      const cavity = scope.keep(scope.keep(innerM.intersect(cone)).trimByPlane([0, 0, 1], p.floor));
-      const led = scope.keep(
-        scope.keep(wasm.Manifold.cylinder(p.floor + 2, p.led / 2, p.led / 2, fine ? 128 : 48)).translate([0, 0, -1]),
-      );
-      const ledId = led.asOriginal();
-      scope.keep(ledId);
-      ids[ledId.originalID()] = 'inner';
-      ids[cone.originalID()] = 'inner';
-      const cutters = [cavity, ledId];
-      if (frustum) cutters.push(frustum);
-      result = scope.keep(solid.subtract(scope.keep(wasm.Manifold.union(cutters))));
-    } else if (frustum) {
-      const innerM = toManifold(wasm, scope, offsetInward(body, p.engrave), body.indices);
-      const engr = scope.keep(frustum.subtract(innerM));
-      ids[innerM.originalID()] = 'cut';
-      result = scope.keep(solid.subtract(engr));
-    } else {
-      result = solid;
+    }
+    const innerM = toManifold(wasm, scope, inner, body.indices);
+    ids[innerM.originalID()] = 'inner';
+    const h = zApex + 10;
+    const cone = scope.keep(
+      scope.keep(scope.keep(wasm.Manifold.cylinder(h, h / k, 0, fine ? 192 : 64)).translate([0, 0, zApex - h])).asOriginal(),
+    );
+    // draft では天井の円錐カットを省く（頂上の内側だけなので外からは見えず、ブーリアン 1 回分速い）
+    const ceiling = quality === 'draft' ? innerM : scope.keep(scope.keep(innerM.intersect(cone)).trimByPlane([0, 0, -1], -zCap));
+    const cavity = scope.keep(ceiling.trimByPlane([0, 0, 1], p.floor));
+    const led = scope.keep(
+      scope.keep(wasm.Manifold.cylinder(p.floor + 2, p.led / 2, p.led / 2, fine ? 128 : 48)).translate([0, 0, -1]),
+    );
+    const ledId = led.asOriginal();
+    scope.keep(ledId);
+    ids[ledId.originalID()] = 'inner';
+    ids[cone.originalID()] = 'inner';
+    const cutters = [cavity, ledId];
+    if (frustum) cutters.push(frustum);
+    let result: Manifold = scope.keep(solid.subtract(scope.keep(wasm.Manifold.union(cutters))));
+
+    let stemPart: BuildResult['stem'];
+    if (peg) {
+      // 座面：ヘタの足元の範囲で外形がいちばん低い高さ。ランタンでは内天井から壁厚ぶん上までに留める
+      let zSeat = Infinity;
+      const bp = body.positions;
+      for (let v = 0; v < bp.length / 3; v++) {
+        if (bp[v * 3 + 2] > info.zCenter && Math.hypot(bp[v * 3], bp[v * 3 + 1]) <= peg.rf) zSeat = Math.min(zSeat, bp[v * 3 + 2]);
+      }
+      zSeat = Math.max(zSeat, zCeil + p.wall);
+      const rs = peg.rf + 0.3;
+      const seat = scope.keep(scope.keep(scope.keep(wasm.Manifold.cylinder(info.zTop + 10, rs, rs, seg)).translate([0, 0, zSeat])).asOriginal());
+      // ピンは座面より 0.5 mm 下から生やして本体と確実に重ねる。先端は面取りして差し込みやすく
+      const { rp, hp } = peg;
+      const c = Math.min(1, hp / 2);
+      const pinProfile: [number, number][] = [[0, -0.5], [rp, -0.5], [rp, hp - c], [rp - 0.4 * c, hp], [0, hp]];
+      const pin = scope.keep(scope.keep(scope.keep(wasm.Manifold.revolve([pinProfile], seg)).translate([0, 0, zSeat])).asOriginal());
+      ids[seat.originalID()] = 'body';
+      ids[pin.originalID()] = 'body';
+      result = scope.keep(scope.keep(result.subtract(seat)).add(pin));
+
+      // ヘタ側：座面で平らに切り、ピン用の穴（半径 +0.15 mm の押し込み嵌合、深さ +0.6 mm）をあける
+      const hole = scope.keep(scope.keep(wasm.Manifold.cylinder(hp + 1.6, rp + 0.15, rp + 0.15, seg)).translate([0, 0, zSeat - 1]));
+      const stemOut = scope.keep(scope.keep(stemM.trimByPlane([0, 0, 1], zSeat)).subtract(hole)).getMesh();
+      stemPart = { positions: xyz(stemOut), indices: new Uint32Array(stemOut.triVerts), seatZ: zSeat };
     }
 
     // CSG の数値誤差で出る体積ほぼ 0 の破片は捨てる
@@ -163,12 +219,7 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
     if (solidParts.length !== parts.length) result = scope.keep(wasm.Manifold.compose(solidParts));
 
     const mesh = result.getMesh();
-    const positions = new Float32Array(mesh.vertProperties.length / mesh.numProp * 3);
-    for (let v = 0, n = positions.length / 3; v < n; v++) {
-      positions[v * 3] = mesh.vertProperties[v * mesh.numProp];
-      positions[v * 3 + 1] = mesh.vertProperties[v * mesh.numProp + 1];
-      positions[v * 3 + 2] = mesh.vertProperties[v * mesh.numProp + 2];
-    }
+    const positions = xyz(mesh);
     const indices = new Uint32Array(mesh.triVerts);
     const groups: MeshGroup[] = [];
     const runIndex = mesh.runIndex;
@@ -202,7 +253,7 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
       face: face.check as FaceCheck,
     });
     stats.ms = performance.now() - t0;
-    return { positions, indices, groups, checks: items, level, stats };
+    return { positions, indices, groups, checks: items, level, stats, ...(stemPart && { stem: stemPart }) };
   } finally {
     scope.dispose();
   }

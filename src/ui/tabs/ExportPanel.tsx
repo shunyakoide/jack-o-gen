@@ -1,12 +1,14 @@
 import { useState } from 'react';
+import { boxOf, partSize, type Vec3 } from '../../geometry/layout';
+import { zipStore } from '../../geometry/zip';
 import { useT } from '../../i18n';
 import { useStore } from '../../state/store';
 import { geometry } from '../../worker/client';
 import { CheckList } from '../CheckBadge';
 import { LedNotice } from './LedNotice';
 
-function download(buf: ArrayBuffer, name: string) {
-  const url = URL.createObjectURL(new Blob([buf], { type: 'model/stl' }));
+function download(buf: ArrayBuffer, name: string, type: string) {
+  const url = URL.createObjectURL(new Blob([buf], { type }));
   const a = document.createElement('a');
   a.href = url;
   a.download = name;
@@ -22,18 +24,25 @@ export function ExportPanel() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const red = preview?.level === 'red';
-  const name = `jack-o-gen-${params.mode === 'lantern' ? 'lantern' : 'sealed'}-${params.seed}.stl`;
+  const name = `jack-o-gen-lantern-${params.seed}`;
+  // ダウンロードされるファイルと大きさ（ヘタは seatZ を底面として測る）
+  const files: [string, Vec3][] = preview
+    ? [[`${name}.stl`, [preview.stats.width, preview.stats.depth, preview.stats.height]]]
+    : [];
+  if (preview?.stem) files.push([`${name}-stem.stl`, partSize(boxOf(preview.stem.positions), preview.stem.seatZ)]);
 
   const doExport = async () => {
     setConfirm(false);
     setBusy(true);
     setMsg(null);
     try {
-      const { stl, result } = await geometry().exportStl(params);
+      const { files, result } = await geometry().exportStl(params);
       if (result.level === 'red') {
         setMsg(t('exportRed'));
       } else {
-        download(stl, name);
+        // 複数ファイルはブラウザが 2 本目をブロックするので zip 1 つにまとめる
+        if (files.length === 1) download(files[0].stl, `${name}.stl`, 'model/stl');
+        else download(zipStore(files.map((f) => ({ name: `${name}${f.suffix}.stl`, data: f.stl }))), `${name}.zip`, 'application/zip');
         setMsg(t('exportDone', { n: result.stats.triangles.toLocaleString(), s: (result.stats.ms / 1000).toFixed(1) }));
       }
     } catch (e) {
@@ -46,11 +55,16 @@ export function ExportPanel() {
   return (
     <div className="export">
       {preview && (
-        <p className="size-line">
-          {t('size')}: {preview.stats.width.toFixed(0)} × {preview.stats.depth.toFixed(0)} × {preview.stats.height.toFixed(0)} mm
-        </p>
+        <ul className="file-list" aria-label={t('files')}>
+          {files.map(([f, [w, d, h]]) => (
+            <li key={f}>
+              <span className="file-name">{f}</span>
+              <span>{t('check.bed.size', { w: w.toFixed(0), d: d.toFixed(0), h: h.toFixed(0) })}</span>
+            </li>
+          ))}
+        </ul>
       )}
-      <button className="primary" disabled={busy || red || !preview} onClick={() => (params.mode === 'lantern' ? setConfirm(true) : doExport())}>
+      <button className="primary" disabled={busy || red || !preview} onClick={() => setConfirm(true)}>
         {busy ? t('generating') : red ? t('blocked') : t('download')}
       </button>
       {msg && <p className="hint">{msg}</p>}

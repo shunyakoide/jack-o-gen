@@ -7,10 +7,10 @@ import {
   defaultParams,
   NUM_DEF_BY_KEY,
   type FacePart,
-  type InteriorMode,
   type NumParams,
   type Params,
   type PartKey,
+  type StemAttach,
   type TabId,
 } from '../model/params';
 import { PRESET_CARDS } from './presets';
@@ -26,7 +26,7 @@ interface State {
   error: string | null;
   activePreset: string | null;
   setNum: (key: keyof NumParams, v: number) => void;
-  setMode: (m: InteriorMode) => void;
+  setStemAttach: (a: StemAttach) => void;
   setSymmetric: (on: boolean) => void;
   setPart: (key: PartKey, patch: Partial<FacePart>) => void;
   selectPart: (key: PartKey) => void;
@@ -55,7 +55,7 @@ export const useStore = create<State>((set, get) => ({
   activePreset: null,
   setNum: (key, v) =>
     set((s) => ({ params: { ...s.params, [key]: clampNum(NUM_DEF_BY_KEY[key], v) }, activePreset: null })),
-  setMode: (mode) => set((s) => ({ params: { ...s.params, mode } })),
+  setStemAttach: (stemAttach) => set((s) => ({ params: { ...s.params, stemAttach } })),
   setSymmetric: (on) =>
     set((s) => ({ params: { ...s.params, face: applySymmetry({ ...s.params.face, symmetric: on }) } })),
   setPart: (key, patch) =>
@@ -79,7 +79,8 @@ export const useStore = create<State>((set, get) => ({
     if (!card) return;
     const seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0;
     const next = card.make(seed);
-    set({ params: { ...next, mode: get().params.mode }, activePreset: id });
+    const { stemAttach } = get().params;
+    set({ params: { ...next, stemAttach }, activePreset: id });
   },
   applyStem: (id) => {
     const st = STEM_STYLES.find((s) => s.id === id);

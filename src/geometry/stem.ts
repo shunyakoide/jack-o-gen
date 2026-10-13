@@ -115,3 +115,16 @@ export function stemTopZ(p: Params, zTop: number): number {
   const H = p.stemHeight * D + sink;
   return zTop - sink + H * (1 - 0.3 * p.stemBend);
 }
+
+/** 差し込み式ヘタの寸法 [mm]：座ぐり半径 rf、ピン半径 rp、ピン高さ hp */
+export function stemPeg(p: Params): { rf: number; rp: number; hp: number } {
+  const D = p.diameter;
+  const sec = stemSection(p.stemSides, p.stemStar, p.stemSides * 12);
+  // 本体表面の位置ではフレアが最大（1 + 0.9·flare）
+  const rBase = p.stemRadius * D * 0.5 * (1 + p.stemFlare * 0.9);
+  return {
+    rf: rBase * Math.max(...sec) + 0.5,
+    rp: Math.min(3, Math.max(1.5, 0.45 * rBase * Math.min(...sec))),
+    hp: Math.min(6, 0.4 * p.stemHeight * D),
+  };
+}
