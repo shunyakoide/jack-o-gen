@@ -18,6 +18,8 @@ export function useAutoBuild() {
       try {
         const r = await callWorker((g) => g.build(p, q), 30_000);
         useStore.getState().setPreview(r);
+        const bed = r.checks.find((c) => c.id === 'bed');
+        if (bed?.vars) useStore.getState().fitBed(p, Math.max(+bed.vars.w, +bed.vars.d, +bed.vars.h));
       } catch (e) {
         console.error(e);
         useStore.getState().setPreview(useStore.getState().preview, String(e));
