@@ -278,6 +278,7 @@ input[type='range']:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(
 .checks .dot { margin-top: 5px; }
 .check-label { font-weight: 600; font-size: 13px; }
 .check-detail { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.check-parts { margin-left: 6px; padding: 0 6px; border-radius: 4px; background: var(--panel-3); color: var(--text); white-space: nowrap; }
 .check-fix { font-size: 12px; line-height: 1.5; margin-top: 2px; }
 .check-fix::before { content: '→ '; color: var(--muted); }
 

@@ -141,6 +141,10 @@ export interface FaceCheck {
   mergedHoles: number;
   islands: number;
   holeCount: number;
+  /** 細い・小さい穴を含むパーツ */
+  holeParts: PartKey[];
+  /** 3mm 未満の連結部に面しているパーツ */
+  linkParts: PartKey[];
 }
 
 export interface FaceLayout {
@@ -161,14 +165,18 @@ export function layoutFace(
   const { CrossSection } = wasm;
   const face = applySymmetry(faceIn);
   const parts: CrossSection[] = [];
+  const keys: PartKey[] = [];
   for (const key of PART_KEYS) {
     const { holes, islands } = partPolygons(key, face[key], opts.scale);
     if (!holes.length) continue;
     let part = scope.keep(new CrossSection(holes.map(ccw), 'NonZero'));
     if (islands.length) part = scope.keep(part.subtract(scope.keep(new CrossSection(islands.map(ccw), 'NonZero'))));
     parts.push(part);
+    keys.push(key);
   }
-  const empty: FaceCheck = { thinHoleArea: 0, tinyHoles: 0, narrowBridgeArea: 0, mergedHoles: 0, islands: 0, holeCount: 0 };
+  const empty: FaceCheck = {
+    thinHoleArea: 0, tinyHoles: 0, narrowBridgeArea: 0, mergedHoles: 0, islands: 0, holeCount: 0, holeParts: [], linkParts: [],
+  };
   if (!parts.length) return { cs: null, check: empty };
   let cs = scope.keep(CrossSection.union(parts));
 
@@ -185,18 +193,43 @@ export function layoutFace(
   const opened = scope.keep(scope.keep(scaled.offset(-rH, 'Round')).offset(rH, 'Round'));
   // 角の先端の削れ（くさび形の小片）は除外し、細い帯状の部分だけを数える
   const sliver = 0.35;
-  const thinHoleArea = scope.keep(scope.keep(scaled.subtract(opened)).offset(-sliver, 'Round')).area();
+  const thinRegion = scope.keep(scope.keep(scaled.subtract(opened)).offset(-sliver, 'Round'));
+  const thinHoleArea = thinRegion.area();
   const comps = scaled.decompose();
-  let tinyHoles = 0;
+  const tiny: CrossSection[] = [];
   for (const c of comps) {
     scope.keep(c);
-    if (scope.keep(c.offset(-rH, 'Round')).isEmpty()) tinyHoles++;
+    if (scope.keep(c.offset(-rH, 'Round')).isEmpty()) tiny.push(c);
   }
+  const tinyHoles = tiny.length;
   const grown = scope.keep(scaled.offset(rL, 'Round'));
   const grownComps = grown.decompose();
   grownComps.forEach((c) => scope.keep(c));
   const closed = scope.keep(grown.offset(-rL, 'Round'));
-  const narrowBridgeArea = scope.keep(scope.keep(closed.subtract(scaled)).offset(-sliver, 'Round')).area();
+  const narrowRegion = scope.keep(scope.keep(closed.subtract(scaled)).offset(-sliver, 'Round'));
+  const narrowBridgeArea = narrowRegion.area();
+
+  // どのパーツが原因かを調べる（警告を押したときにそのパーツを選ぶため）。
+  // アーチの尖りは顔全体に足すので、実際の穴（comps）ごとに、それを含むパーツを割り当てる
+  const touches = (a: CrossSection, b: CrossSection) => scope.keep(a.intersect(b)).area() > 0.01;
+  const partsK = parts.map((p) => scope.keep(p.scale(k)));
+  // アーチの尖りが線でしか接さず独立した小穴になることがあるので、どのパーツにも重ならない穴はすぐそばのパーツに割り当てる
+  const compKeys = comps.map((c) => {
+    const own = keys.filter((_, i) => touches(c, partsK[i]));
+    return own.length ? own : keys.filter((_, i) => touches(c, scope.keep(partsK[i].offset(rL, 'Round'))));
+  });
+  const keysOf = (hit: (c: CrossSection, i: number) => boolean) => {
+    const out = new Set<PartKey>();
+    comps.forEach((c, i) => hit(c, i) && compKeys[i].forEach((key) => out.add(key)));
+    return keys.filter((key) => out.has(key));
+  };
+  const holeRegion = scope.keep(CrossSection.union([thinRegion, ...tiny]));
+  const holeParts = keysOf((c) => touches(c, holeRegion));
+  // 連結部に面している穴と、広げると別の穴とつながる穴
+  const shared = grownComps.map((g) => comps.filter((c) => touches(c, g)).length > 1);
+  const linkParts = keysOf(
+    (c) => touches(scope.keep(c.offset(rL, 'Round')), narrowRegion) || grownComps.some((g, j) => shared[j] && touches(c, g)),
+  );
 
   // 島（穴の内側の材料）を、下向きのブリッジで縁とつなぐ
   let islands = 0;
@@ -241,6 +274,8 @@ export function layoutFace(
       mergedHoles: Math.max(0, comps.length - grownComps.length),
       islands,
       holeCount: comps.length,
+      holeParts,
+      linkParts,
     },
   };
 }
