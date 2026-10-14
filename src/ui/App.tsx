@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Viewer } from '../preview/Viewer';
 import { shareUrl, useAutoBuild, useUrlSync } from '../state/sync';
 import { useStore } from '../state/store';
-import { CheckBadge } from './CheckBadge';
+import { CheckBadge, CheckList } from './CheckBadge';
 import { PresetCards } from './PresetCards';
 import { TabContent, TABS } from './tabs/Tabs';
 import { useLang, useT } from '../i18n';
@@ -118,6 +118,7 @@ export function App() {
         </section>
         <section className="stage" aria-label={t('preview3d')}>
           <Viewer />
+          <CheckList problems />
         </section>
       </main>
       {/* ライブリージョンは常に置いておき、中身の出し入れで読み上げさせる */}
