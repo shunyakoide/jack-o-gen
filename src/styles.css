@@ -164,6 +164,7 @@ button.badge:hover { background: var(--panel-3); }
 }
 .slider-num:hover, .slider-num:focus { border-color: var(--accent); }
 .unit { color: var(--muted); font-size: 12px; min-width: 18px; }
+.slider-note { color: var(--muted); font-size: 12px; margin-left: 6px; }
 
 /* スライダー：細いトラック + 灯りのようなつまみ */
 input[type='range'] { width: 100%; height: 18px; margin: 0; background: transparent; accent-color: var(--accent); -webkit-appearance: none; appearance: none; }
