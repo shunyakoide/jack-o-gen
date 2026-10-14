@@ -2,6 +2,7 @@
 // 座標系：mm、z が上（造形方向）、正面は −y 方向（θ = −π/2）。
 
 import { TOP_SHARE, type Params } from '../model/params';
+import { FACE_REF_DIAMETER } from './face/layout';
 import { hashSigned, sphereNoise } from './rng';
 
 export const FRONT_THETA = -Math.PI / 2;
@@ -86,9 +87,21 @@ export const DRAFT_RES: Resolution = { theta: 64, rings: 28 };
 export const PREVIEW_RES: Resolution = { theta: 120, rings: 56 };
 export const EXPORT_RES: Resolution = { theta: 360, rings: 160 };
 
-/** 接地径の実効値。LED 開口＋余白が収まるよう広げる */
+/** 基準径より小さいときに LED 開口を縮める比率。底の切り口を基準径のときと同じにして、直径だけで形が変わらないように */
+function ledScale(p: Params): number {
+  return Math.min(1, p.diameter / FACE_REF_DIAMETER);
+}
+
+/** 実際に開ける LED 開口の直径 [mm] */
+export function ledHole(p: Params): number {
+  return p.led * ledScale(p);
+}
+
+/** 接地径の実効値。LED 開口＋余白が収まるよう広げる（余白は基準径での値を縮めたもの。壁厚＋1 mm は必ず残す） */
 export function effectiveFlat(p: Params): number {
-  return Math.min(0.85, Math.max(p.flat, (p.led + 2 * (p.wall + 4)) / p.diameter));
+  const s = ledScale(p);
+  const need = Math.max(s * (p.led + 2 * (p.wall + 4)), ledHole(p) + 2 * p.wall + 2);
+  return Math.min(0.85, Math.max(p.flat, need / p.diameter));
 }
 
 export function buildBody(p: Params, res: Resolution): Body {

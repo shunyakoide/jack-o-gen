@@ -1,7 +1,7 @@
 // 形状生成の全体：本体＋ヘタの union、顔の切り抜き／彫り込み、中空化、チェック。
 
 import type { Params } from '../model/params';
-import { buildBody, DRAFT_RES, EXPORT_RES, FRONT_THETA, offsetInward, PREVIEW_RES, type Body, type BodyInfo } from './body';
+import { buildBody, DRAFT_RES, EXPORT_RES, FRONT_THETA, ledHole as ledDiameter, offsetInward, PREVIEW_RES, type Body, type BodyInfo } from './body';
 import { runChecks, type CheckItem, type CheckLevel } from './checks';
 import { FACE_REF_DIAMETER, layoutFace, subdivide, type FaceCheck } from './face/layout';
 import type { Pt } from './face/presets';
@@ -177,7 +177,7 @@ function cavityOf(c: Ctx, p: Params, body: Body) {
 /** 底の LED 用の穴 */
 function ledHole(c: Ctx, p: Params, fine: boolean): Manifold {
   const led = c.scope.keep(
-    c.scope.keep(c.wasm.Manifold.cylinder(p.floor + 2, p.led / 2, p.led / 2, fine ? 128 : 48)).translate([0, 0, -1]),
+    c.scope.keep(c.wasm.Manifold.cylinder(p.floor + 2, ledDiameter(p) / 2, ledDiameter(p) / 2, fine ? 128 : 48)).translate([0, 0, -1]),
   );
   const ledId = c.scope.keep(led.asOriginal());
   c.ids[ledId.originalID()] = 'inner';

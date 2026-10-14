@@ -146,3 +146,16 @@ describe('URL', () => {
   });
 });
 
+
+describe('直径', () => {
+  it('基準径より小さくしても同じ形のまま縮み、LED 開口も縮む', () => {
+    const big = buildBody(defaultParams(), PREVIEW_RES).info;
+    const small = buildBody({ ...defaultParams(), diameter: 60 }, PREVIEW_RES).info;
+    expect(small.height / small.rMax).toBeCloseTo(big.height / big.rMax, 2);
+    expect(small.rContact / small.rMax).toBeCloseTo(big.rContact / big.rMax, 2);
+    const { r } = summary({ ...defaultParams(), diameter: 60 }, 'draft');
+    const base = r.checks.find((c) => c.id === 'base')!;
+    expect(base.level).toBe('green');
+    expect(base.vars!.led).toBe('22');
+  });
+});
