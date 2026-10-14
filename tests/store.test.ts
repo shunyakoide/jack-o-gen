@@ -8,15 +8,13 @@ describe('プリセット', () => {
     useStore.getState().applyPreset('ghost');
     const p = useStore.getState().params;
     expect([p.diameter, p.led, p.wall, p.stemAttach, p.height]).toEqual([80, 60, 2.4, 'peg', 2.1]);
-    expect(useStore.getState().fitToBed).toBe(true);
   });
 
-  it('ベッドに収まらなければ直径を縮め、収まれば止める', () => {
-    useStore.setState({ params: { ...defaultParams(), diameter: 240 }, fitToBed: true });
-    useStore.getState().fitBed(useStore.getState().params, 275);
-    expect(useStore.getState().params.diameter).toBe(213);
-    expect(useStore.getState().shrunkFrom).toBe(240);
-    useStore.getState().fitBed(useStore.getState().params, 244);
-    expect(useStore.getState().fitToBed).toBe(false);
+  it('直径はスライダーの端より大きく打ち込め、プリセットでも縮まない', () => {
+    useStore.setState({ params: defaultParams() });
+    useStore.getState().setNum('diameter', 400);
+    useStore.getState().setNum('wall', 99);
+    useStore.getState().applyPreset('ghost');
+    expect([useStore.getState().params.diameter, useStore.getState().params.wall]).toEqual([400, 4]);
   });
 });

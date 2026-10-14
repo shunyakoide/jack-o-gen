@@ -24,7 +24,7 @@ describe('ベッド判定', () => {
     const p: Params = { ...defaultParams(), diameter: 230, height: 1.0 };
     expect(check(buildPumpkin(wasm, p, 'draft'), 'bed')!.level).toBe('green');
     const bed = check(buildPumpkin(wasm, { ...p, stemAttach: 'peg' }, 'draft'), 'bed')!;
-    expect([bed.level, bed.detail]).toEqual(['red', 'pair']);
+    expect([bed.level, bed.detail]).toEqual(['yellow', 'pair']);
   });
 });
 

@@ -1,9 +1,7 @@
 // アプリ全体の状態（zustand）。
 import { create } from 'zustand';
 import type { BuildResult } from '../geometry/build';
-import { BED_SIZE } from '../geometry/checks';
 import { clampFace } from '../geometry/face/layout';
-import { PRINT_GAP } from '../geometry/layout';
 import {
   applySymmetry,
   clampNum,
@@ -29,9 +27,6 @@ interface State {
   error: string | null;
   activePreset: string | null;
   /** プリセット適用直後：ビルド結果がベッドに収まらなければ直径を縮める */
-  fitToBed: boolean;
-  /** fitBed で縮める前の直径（縮めたことを知らせる。次の操作で消える） */
-  shrunkFrom: number | null;
   /** 元に戻す / やり直す用のパラメータ履歴 */
   past: Params[];
   future: Params[];
@@ -45,8 +40,6 @@ interface State {
   setTab: (t: TabId) => void;
   applyPreset: (id: string) => void;
   applyStem: (id: string) => void;
-  /** ベッドに収まらなかったビルド結果から直径を縮める（履歴には積まない）。収まっていれば fitToBed を下ろす */
-  fitBed: (p: Params, bedMax: number) => void;
   setPreview: (r: BuildResult | null, error?: string | null) => void;
   setBuilding: (b: boolean) => void;
 }
@@ -72,10 +65,10 @@ export function endGesture() {
 }
 
 /** params を変更しつつ履歴に積む */
-function track(s: State, params: Params): Pick<State, 'params' | 'past' | 'future' | 'fitToBed' | 'shrunkFrom'> {
+function track(s: State, params: Params): Pick<State, 'params' | 'past' | 'future'> {
   const past = gesture === 'pushed' ? s.past : [...s.past, s.params].slice(-50);
   if (gesture === 'open') gesture = 'pushed';
-  return { params, past, future: [], fitToBed: false, shrunkFrom: null };
+  return { params, past, future: [] };
 }
 
 /** プリセットを選んでも変えない設定（大きさと印刷まわり） */
@@ -89,21 +82,19 @@ export const useStore = create<State>((set) => ({
   building: false,
   error: null,
   activePreset: null,
-  fitToBed: false,
-  shrunkFrom: null,
   past: [],
   future: [],
   undo: () =>
     set((s) => {
       if (!s.past.length) return {};
       endGesture();
-      return { params: s.past[s.past.length - 1], past: s.past.slice(0, -1), future: [s.params, ...s.future], activePreset: null, shrunkFrom: null };
+      return { params: s.past[s.past.length - 1], past: s.past.slice(0, -1), future: [s.params, ...s.future], activePreset: null };
     }),
   redo: () =>
     set((s) => {
       if (!s.future.length) return {};
       endGesture();
-      return { params: s.future[0], past: [...s.past, s.params], future: s.future.slice(1), activePreset: null, shrunkFrom: null };
+      return { params: s.future[0], past: [...s.past, s.params], future: s.future.slice(1), activePreset: null };
     }),
   setNum: (key, v) =>
     set((s) => ({ ...track(s, { ...s.params, [key]: clampNum(NUM_DEF_BY_KEY[key], v) }), activePreset: null })),
@@ -134,23 +125,13 @@ export const useStore = create<State>((set) => ({
     const next = card.make(seed);
     set((s) => {
       const kept = Object.fromEntries(KEEP_ON_PRESET.map((k) => [k, s.params[k]]));
-      return { ...track(s, { ...next, ...kept }), activePreset: id, fitToBed: true };
+      return { ...track(s, { ...next, ...kept }), activePreset: id };
     });
   },
   applyStem: (id) => {
     const st = STEM_STYLES.find((s) => s.id === id);
     if (st) set((s) => ({ ...track(s, { ...s.params, ...st.values }), activePreset: null }));
   },
-  fitBed: (p, bedMax) =>
-    set((s) => {
-      if (!s.fitToBed || s.params !== p) return {};
-      const def = NUM_DEF_BY_KEY.diameter;
-      if (bedMax <= BED_SIZE || p.diameter <= def.min) return { fitToBed: false };
-      // 本体とヘタの間隔（PRINT_GAP）だけは縮まないので、その分を除いた比率で縮める。
-      // 粗い draft の寸法で測ることもあるので、4 mm 内側を狙う
-      const d = clampNum(def, Math.floor((p.diameter * (BED_SIZE - 4 - PRINT_GAP)) / (bedMax - PRINT_GAP)));
-      return { params: { ...p, diameter: d }, shrunkFrom: s.shrunkFrom ?? p.diameter };
-    }),
   setPreview: (preview, error = null) => set({ preview, error }),
   setBuilding: (building) => set({ building }),
 }));

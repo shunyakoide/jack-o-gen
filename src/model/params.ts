@@ -87,10 +87,12 @@ export interface NumDef {
   /** UI に出さない（プリセット・URL からのみ変わる） */
   hidden?: boolean;
   int?: boolean;
+  /** max はスライダーの端だけで、数値入力・URL ではそれより大きくできる */
+  openMax?: boolean;
 }
 
 export const NUM_DEFS: NumDef[] = [
-  { key: 'diameter', q: 'D', group: 'body', min: 60, max: 240, step: 1, def: 120, unit: 'mm' },
+  { key: 'diameter', q: 'D', group: 'body', min: 60, max: 240, step: 1, def: 120, unit: 'mm', openMax: true },
   { key: 'height', q: 'H', group: 'body', min: 0.8, max: 2.6, step: 0.01, def: 1.4 },
   { key: 'wobble', q: 'wb', group: 'body', min: 0, max: 0.12, step: 0.005, def: 0.01, advanced: true },
   { key: 'superE', q: 'e', group: 'body', min: 1.6, max: 4, step: 0.05, def: 2.3, advanced: true },
@@ -148,7 +150,7 @@ export function defaultParams(): Params {
 
 export function clampNum(def: NumDef, v: number): number {
   if (!Number.isFinite(v)) return def.def;
-  let x = Math.min(def.max, Math.max(def.min, v));
+  let x = Math.max(def.min, def.openMax ? v : Math.min(def.max, v));
   if (def.int) x = Math.round(x);
   return x;
 }

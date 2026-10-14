@@ -30,7 +30,7 @@ export function ParamSlider({ k }: { k: keyof NumParams }) {
           type="number"
           className="slider-num"
           min={def.min}
-          max={def.max}
+          max={def.openMax ? undefined : def.max}
           step={def.step}
           value={draft ?? +value.toFixed(digits)}
           onChange={(e) => {
