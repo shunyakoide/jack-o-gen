@@ -6,12 +6,12 @@ import { ja } from '../src/i18n/ja';
 
 const ok: CheckInput = {
   status: 'NoError', empty: false, components: 1,
-  stats: { contactDiameter: 60, maxDiameter: 120 }, bed: [120, 120, 170],
+  stats: { contactDiameter: 60, maxDiameter: 120 },
   peg: { rp: 2, hp: 5, fits: true },
   face: { thinHoleArea: 0, tinyHoles: 0, narrowBridgeArea: 0, mergedHoles: 0, islands: 0, holeCount: 4, holeParts: [], linkParts: [] },
 };
 const bad: Partial<CheckInput>[] = [
-  { components: 2 }, { status: 'NotManifold' }, { bed: [300, 120, 170] }, { bed: [300, 120, 170], peg: null },
+  { components: 2 }, { status: 'NotManifold' },
   { peg: { rp: 1.5, hp: 2, fits: false } }, { stats: { contactDiameter: 30, maxDiameter: 120 } },
   { stats: { contactDiameter: 60, maxDiameter: 240 } },
   { face: { ...ok.face, tinyHoles: 1 } }, { face: { ...ok.face, thinHoleArea: 5 } },

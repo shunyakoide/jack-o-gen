@@ -1,7 +1,7 @@
 # Jack-o-Gen
 
 Browser-only parametric pumpkin (jack-o'-lantern) generator that exports STL for 3D printing.
-Target: Bambu Lab A1 (256 mm bed), 0.4 mm nozzle, PLA. Public launch ~10/24. Deploy: Cloudflare Pages (`npm run build` → `dist`, NODE_VERSION=22).
+Target: any FDM printer, 0.4 mm nozzle, PLA (fit tolerances were calibrated on a Bambu Lab A1). No bed-size check: users have different printers, so size is never limited or warned about. Public launch ~10/24. Deploy: Cloudflare Pages (`npm run build` → `dist`, NODE_VERSION=22).
 
 ## Commands
 - `npm run dev` — Vite dev server (http://localhost:5173)

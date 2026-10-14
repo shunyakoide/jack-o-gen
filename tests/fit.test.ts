@@ -7,7 +7,6 @@ import { decodeParams, encodeParams } from '../src/state/url';
 import { cutDepth, solidOf, topThickness } from './fit-helpers';
 
 const wasm = await loadManifold();
-const check = (r: ReturnType<typeof buildPumpkin>, id: string) => r.checks.find((c) => c.id === id);
 
 describe('小さいカボチャの天井', () => {
   it('直径 60 でも頂上の肉は 6 mm 未満、顔の切り抜きの奥行きも 6 mm 未満', () => {
@@ -16,15 +15,6 @@ describe('小さいカボチャの天井', () => {
     const r = buildPumpkin(wasm, p, 'preview');
     expect(topThickness(wasm, r, p.stemRadius * p.diameter * 1.5 + 2)).toBeLessThan(6);
     expect(cutDepth(r)).toBeLessThan(6);
-  });
-});
-
-describe('ベッド判定', () => {
-  it('差し込み式は横に並べたヘタも含めて測る', () => {
-    const p: Params = { ...defaultParams(), diameter: 230, height: 1.0 };
-    expect(check(buildPumpkin(wasm, p, 'draft'), 'bed')!.level).toBe('green');
-    const bed = check(buildPumpkin(wasm, { ...p, stemAttach: 'peg' }, 'draft'), 'bed')!;
-    expect([bed.level, bed.detail]).toEqual(['yellow', 'pair']);
   });
 });
 
