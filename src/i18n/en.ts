@@ -24,6 +24,7 @@ export const en: Record<string, string> = {
   'preset.kiku.hint': 'Fine ribs and a deep crown',
   'preset.random': 'Random',
   'preset.random.hint': 'Different every time',
+  'presetShrunk': 'Diameter reduced from {from} to {to} mm so this shape fits the {bed} mm bed.',
 
   'stem.classic': 'Classic',
   'stem.stubby': 'Stubby',

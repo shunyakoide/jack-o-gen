@@ -24,6 +24,7 @@ export const ja: Record<string, string> = {
   'preset.kiku.hint': '細かい筋と深い菊座',
   'preset.random': 'ランダム',
   'preset.random.hint': '押すたびに違う形',
+  'presetShrunk': 'この形だと造形範囲（{bed}mm）に収まらないため、直径を {from} → {to}mm に縮めました。',
 
   'stem.classic': '定番',
   'stem.stubby': 'ずんぐり',
