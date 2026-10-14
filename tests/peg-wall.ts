@@ -6,6 +6,7 @@ import { defaultParams, type Params } from '../src/model/params';
 import { PRESET_CARDS } from '../src/state/presets';
 import { STEM_STYLES } from '../src/state/stems';
 import { stemWall } from './fit-helpers';
+import { FIT } from '../src/geometry/stem';
 
 const wasm = await loadManifold();
 
@@ -14,13 +15,13 @@ export function pegWallSuite(D: number) {
     const ghost = PRESET_CARDS.find((c) => c.id === 'ghost')!.make(42);
     const cases: [string, Partial<Params>][] = [...STEM_STYLES.map((s): [string, Partial<Params>] => [s.id, s.values]), ['ghost', ghost]];
     for (const [id, values] of cases) {
-      it(`${id}：穴のまわりに 0.8 mm 以上残るか、細すぎの警告が出る`, () => {
+      it(`${id}：穴のまわりに ${FIT.minWall} mm 以上残るか、細すぎの警告が出る`, () => {
         const p: Params = { ...defaultParams(), ...values, diameter: D, stemAttach: 'peg' };
         const r = buildPumpkin(wasm, p, 'preview');
         const peg = r.checks.find((c) => c.id === 'peg')!;
         // 直径 120 以上ならどのヘタにも差し込める
         if (D >= 120) expect(peg.level).toBe('green');
-        if (peg.level === 'green') expect(stemWall(wasm, p, r)).toBeGreaterThanOrEqual(0.8);
+        if (peg.level === 'green') expect(stemWall(wasm, p, r)).toBeGreaterThanOrEqual(FIT.minWall);
         else expect([peg.level, peg.detail]).toEqual(['yellow', 'thin']);
       });
     }

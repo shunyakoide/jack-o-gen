@@ -22,7 +22,7 @@ export const PRESET_CARDS: PresetCard[] = [
       ...defaultParams(),
       height: 2.1, egg: 0.12, wobble: 0.06, superE: 2.0,
       ribs: 8, ribDepth: 0.06, ribSharp: 1.6, twist: 25, ribJitter: 0.1,
-      stemHeight: 0.16, stemBend: 0.55, stemRadius: 0.06, stemTwist: 70,
+      stemHeight: 0.16, stemBend: 0.55, stemRadius: 0.08, stemTwist: 70,
       diameter: 100,
       face: withFace({
         eyeL: { preset: 'round', x: -18, y: 22, w: 18, h: 26, rot: 0 },
@@ -36,7 +36,7 @@ export const PRESET_CARDS: PresetCard[] = [
     make: () => ({
       ...defaultParams(),
       height: 1.0, superE: 2.6, ribs: 12, ribDepth: 0.11, ribSharp: 2.2,
-      dimpleDepth: 0.06, stemHeight: 0.1, stemRadius: 0.1, stemTaper: 0.15, stemBend: 0.1,
+      dimpleDepth: 0.06, stemHeight: 0.1, stemRadius: 0.13, stemTaper: 0.15, stemBend: 0.1,
       diameter: 140, flat: 0.55,
       face: withFace({
         eyeL: { preset: 'happy', x: -26, y: 7, w: 22, h: 13, rot: 0 },
@@ -51,7 +51,7 @@ export const PRESET_CARDS: PresetCard[] = [
       ...defaultParams(),
       height: 1.22, superE: 2.8, ribs: 18, ribDepth: 0.07, ribSharp: 0.55, ribFade: 0.4,
       dimpleDepth: 0.13, dimpleWidth: 0.45, stemSides: 6, stemStar: 0.3, stemHeight: 0.12,
-      stemRadius: 0.075, stemTaper: 0.2, stemBend: 0.15, stemTwist: 20,
+      stemRadius: 0.095, stemTaper: 0.2, stemBend: 0.15, stemTwist: 20,
       face: withFace({
         eyeL: { preset: 'angry', x: -24, y: 11, w: 22, h: 14, rot: 0 },
         nose: { preset: 'down', x: 0, y: -1, w: 10, h: 8, rot: 0 },
@@ -72,7 +72,7 @@ export const PRESET_CARDS: PresetCard[] = [
         height: rand(1.0, 2.05), superE: rand(1.9, 3), egg: rand(-0.1, 0.15),
         wobble: rand(0, 0.05), ribs: Math.round(rand(6, 18)), ribDepth: rand(0.04, 0.14),
         ribSharp: rand(0.5, 2.5), twist: rand(-40, 40), ribJitter: rand(0, 0.1),
-        dimpleDepth: rand(0.03, 0.12), stemHeight: rand(0.1, 0.3), stemRadius: rand(0.05, 0.1),
+        dimpleDepth: rand(0.03, 0.12), stemHeight: rand(0.1, 0.3), stemRadius: rand(0.065, 0.13),
         stemBend: rand(0, 0.6), stemTwist: rand(-90, 90), stemStar: rand(0, 0.35),
         stemSides: Math.round(rand(4, 7)),
       });

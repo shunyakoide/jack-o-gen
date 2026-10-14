@@ -2,7 +2,7 @@
 import { buildBody, EXPORT_RES, PREVIEW_RES } from '../src/geometry/body';
 import { buildPumpkin, type BuildResult, type Quality } from '../src/geometry/build';
 import type { Manifold, Wasm } from '../src/geometry/manifold';
-import { buildStem } from '../src/geometry/stem';
+import { buildStem, FIT } from '../src/geometry/stem';
 import type { Params } from '../src/model/params';
 
 type Pt = [number, number];
@@ -45,7 +45,7 @@ function edgeDist(poly: Pt[]): number {
 
 /**
  * ヘタ側の穴まわりの最小肉厚 [mm]。穴 = (座面で切った元のヘタ) − (出力されたヘタ) を 0.1 mm ごとに輪切りにし、
- * 「軸から元のヘタ外形までの最短距離 − 穴の最大半径」の最小値を返す。穴の上 0.8 mm（天井）も含める
+ * 「軸から元のヘタ外形までの最短距離 − 穴の最大半径」の最小値を返す。穴の上 FIT.minWall（天井）も含める
  */
 export function stemWall(wasm: Wasm, p: Params, r: BuildResult, fine = false): number {
   const st = r.stem!;
@@ -56,7 +56,7 @@ export function stemWall(wasm: Wasm, p: Params, r: BuildResult, fine = false): n
   const holeTop = hole.boundingBox().max[2];
   let wall = Infinity;
   let rHole = 0;
-  for (let z = st.seatZ + 0.05; z <= holeTop + 0.8; z += 0.1) {
+  for (let z = st.seatZ + 0.05; z <= holeTop + FIT.minWall; z += 0.1) {
     // CSG の数値誤差で外周に出る極薄の破片は除き、面積最大の輪郭を穴とみなす
     const hs = (hole.slice(Math.min(z, holeTop - 0.01)).toPolygons() as Pt[][]).sort((a, b) => area(b) - area(a))[0] ?? [];
     if (z < holeTop) rHole = Math.max(...hs.map(([x, y]) => Math.hypot(x, y)));

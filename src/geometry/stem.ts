@@ -126,11 +126,11 @@ export const FIT = {
   holeExtra: 0.6,
   /** ヘタ側の穴の入口の 45° 面取り（1 層目のつぶれ＝エレファントフット対策） */
   chamfer: 0.4,
-  /** 穴のまわりに残すヘタの肉厚（0.4 mm ノズルで 2 周） */
-  minWall: 0.8,
+  /** 穴のまわりに残すヘタの肉厚（0.4 mm ノズルで 3 周。2 周では差し込むときに割れた） */
+  minWall: 1.2,
   /** ピン半径の上限・下限 */
-  pinMax: 3,
-  pinMin: 1.2,
+  pinMax: 4,
+  pinMin: 1.5,
 };
 
 /** 座ぐりの半径：本体表面の位置ではフレアが最大（1 + 0.9·flare） */
@@ -167,10 +167,13 @@ export function stemPin(p: Params, zTop: number, zSeat: number): { rp: number; h
     }
     return rp;
   };
-  const hp0 = Math.min(6, 0.4 * p.stemHeight * p.diameter);
-  for (let hp = hp0; hp >= Math.min(hp0, 2); hp -= 0.5) {
-    const rp = rpFor(hp);
-    if (rp >= FIT.pinMin) return { rp, hp, fits: true };
-  }
+  const hp0 = Math.min(8, 0.5 * p.stemHeight * p.diameter);
+  // 深さ 4 mm までは太さを優先する（細く深いピンは差し込むときに折れる）。太さがほぼ変わらない範囲でいちばん深く
+  const cands: { rp: number; hp: number }[] = [];
+  for (let hp = hp0; hp >= Math.min(hp0, 2); hp -= 0.5) cands.push({ rp: rpFor(hp), hp });
+  const deep = cands.filter((c) => c.hp >= Math.min(hp0, 4));
+  const best = Math.max(...deep.map((c) => c.rp));
+  const pick = best >= FIT.pinMin ? deep.find((c) => c.rp >= best - 0.25) : cands.find((c) => c.rp >= FIT.pinMin);
+  if (pick) return { ...pick, fits: true };
   return { rp: FIT.pinMin, hp: Math.min(hp0, 2), fits: false };
 }

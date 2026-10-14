@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildPumpkin } from '../src/geometry/build';
 import { loadManifold } from '../src/geometry/manifold';
-import { stemSeatRadius } from '../src/geometry/stem';
+import { FIT, stemSeatRadius } from '../src/geometry/stem';
 import { defaultParams, type Params } from '../src/model/params';
 import { solidOf, stemWall } from './fit-helpers';
 
@@ -23,7 +23,7 @@ describe('書き出し解像度（差し込み式）', () => {
     expect(filled / disc.volume()).toBeGreaterThan(0.999);
   });
 
-  it('ヘタの穴のまわりに 0.8 mm 以上残る', () => {
-    expect(stemWall(wasm, p, r, true)).toBeGreaterThanOrEqual(0.8);
+  it(`ヘタの穴のまわりに ${FIT.minWall} mm 以上残る`, () => {
+    expect(stemWall(wasm, p, r, true)).toBeGreaterThanOrEqual(FIT.minWall);
   });
 });
