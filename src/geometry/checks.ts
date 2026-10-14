@@ -28,7 +28,7 @@ export interface CheckInput {
   face: FaceCheck;
 }
 
-const BED = 250;
+export const BED_SIZE = 250;
 
 export function runChecks(p: Params, c: CheckInput): { items: CheckItem[]; level: CheckLevel } {
   const items: CheckItem[] = [];
@@ -44,9 +44,9 @@ export function runChecks(p: Params, c: CheckInput): { items: CheckItem[]; level
   const [w, d, h] = c.bed;
   items.push({
     id: 'bed',
-    level: Math.max(w, d, h) <= BED ? 'green' : 'red',
+    level: Math.max(w, d, h) <= BED_SIZE ? 'green' : 'red',
     detail: c.peg ? 'pair' : 'size',
-    vars: { bed: BED, w: w.toFixed(0), d: d.toFixed(0), h: h.toFixed(0) },
+    vars: { bed: BED_SIZE, w: w.toFixed(0), d: d.toFixed(0), h: h.toFixed(0) },
   });
 
   if (c.peg) {
