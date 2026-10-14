@@ -112,9 +112,11 @@ describe('buildPumpkin', () => {
     }
   });
 
-  it('大きすぎるとサイズチェックが赤', () => {
-    const { r } = summary({ ...defaultParams(), diameter: 240, height: 2.4, stemHeight: 0.4 }, 'draft');
-    expect(r.checks.find((c) => c.id === 'bed')!.level).toBe('red');
+  it('A1 に収まらなければサイズチェックが黄（大きいプリンター向けに出力は止めない）', () => {
+    const { r } = summary({ ...defaultParams(), diameter: 400 }, 'draft');
+    expect(r.checks.find((c) => c.id === 'bed')!.level).toBe('yellow');
+    expect(r.checks.find((c) => c.id === 'manifold')!.level).toBe('green');
+    expect(r.level).not.toBe('red');
   });
 
   it('瞳つきの目は島にブリッジが入る', () => {

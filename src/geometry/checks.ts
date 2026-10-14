@@ -30,6 +30,7 @@ export interface CheckInput {
   face: FaceCheck;
 }
 
+/** Bambu A1 の造形範囲。大きいプリンターもあるので超えても出力は止めず、黄色で知らせるだけ */
 export const BED_SIZE = 250;
 
 export function runChecks(p: Params, c: CheckInput): { items: CheckItem[]; level: CheckLevel } {
@@ -46,7 +47,7 @@ export function runChecks(p: Params, c: CheckInput): { items: CheckItem[]; level
   const [w, d, h] = c.bed;
   items.push({
     id: 'bed',
-    level: Math.max(w, d, h) <= BED_SIZE ? 'green' : 'red',
+    level: Math.max(w, d, h) <= BED_SIZE ? 'green' : 'yellow',
     detail: c.peg ? 'pair' : 'size',
     vars: { bed: BED_SIZE, w: w.toFixed(0), d: d.toFixed(0), h: h.toFixed(0) },
   });
