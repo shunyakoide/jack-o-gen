@@ -26,6 +26,7 @@ export function CheckList() {
           <div>
             <div className="check-label">{t(`check.${c.id}`, c.vars)}</div>
             <div className="check-detail">{t(`check.${c.id}.${c.detail}`, c.vars)}</div>
+            {c.level !== 'green' && <div className="check-fix">{t(`check.${c.id}.${c.detail}.fix`, c.vars)}</div>}
           </div>
         </li>
       ))}
