@@ -51,6 +51,7 @@ export const ja: Record<string, string> = {
   'p.stemTwist': 'ねじれ',
   'p.wall': '肉厚',
   'p.led': 'LED用開口',
+  'ledActual': '実寸 φ{d}mm',
 
   'part.eyeL': '左目',
   'part.eyeR': '右目',

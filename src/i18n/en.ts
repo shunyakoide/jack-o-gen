@@ -51,6 +51,7 @@ export const en: Record<string, string> = {
   'p.stemTwist': 'Twist',
   'p.wall': 'Wall thickness',
   'p.led': 'LED opening',
+  'ledActual': 'actual Ø{d} mm',
 
   'part.eyeL': 'Left eye',
   'part.eyeR': 'Right eye',
