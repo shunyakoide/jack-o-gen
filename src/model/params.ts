@@ -110,7 +110,7 @@ export const NUM_DEFS: NumDef[] = [
 
   { key: 'stemHeight', q: 'sh', group: 'stem', min: 0.05, max: 0.45, step: 0.005, def: 0.2, advanced: true },
   { key: 'stemBend', q: 'sb', group: 'stem', min: 0, max: 0.8, step: 0.01, def: 0.3, advanced: true },
-  { key: 'stemRadius', q: 'sr', group: 'stem', min: 0.03, max: 0.14, step: 0.002, def: 0.07, advanced: true },
+  { key: 'stemRadius', q: 'sr', group: 'stem', min: 0.04, max: 0.18, step: 0.002, def: 0.09, advanced: true },
   { key: 'stemTwist', q: 'sw', group: 'stem', min: -180, max: 180, step: 1, def: 40, unit: '°', advanced: true },
   { key: 'stemTaper', q: 'st', group: 'stem', min: 0, max: 0.7, step: 0.01, def: 0.3, hidden: true },
   { key: 'stemSides', q: 'sn', group: 'stem', min: 4, max: 9, step: 1, def: 5, int: true, hidden: true },
