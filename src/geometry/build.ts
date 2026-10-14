@@ -199,9 +199,11 @@ function addPeg(c: Ctx, p: Params, body: Body, stemM: Manifold, result: Manifold
   const seat = scope.keep(scope.keep(scope.keep(wasm.Manifold.cylinder(info.zTop + 10, rf, rf, seg)).translate([0, 0, zSeat])).asOriginal());
   const peg = stemPin(p, info.zTop, zSeat);
   const { rp, hp } = peg;
-  // ピンは座面より 0.5 mm 下から生やして本体と確実に重ねる。先端は面取りして差し込みやすく
+  // ピンは座面より 0.5 mm 下から生やして本体と確実に重ねる。先端は面取りして差し込みやすく。
+  // 根元は穴の入口の面取りに沿う 45° の肉盛り（すき間は pinClear のまま）で、層の境目に力が集中しないように
   const tip = Math.min(1, hp / 2);
-  const pinProfile: [number, number][] = [[0, -0.5], [rp, -0.5], [rp, hp - tip], [rp - 0.4 * tip, hp], [0, hp]];
+  const root = Math.min(FIT.chamfer, hp - tip - 0.2);
+  const pinProfile: [number, number][] = [[0, -0.5], [rp + root + 0.5, -0.5], [rp, root], [rp, hp - tip], [rp - 0.4 * tip, hp], [0, hp]];
   const pin = scope.keep(scope.keep(scope.keep(wasm.Manifold.revolve([pinProfile], seg)).translate([0, 0, zSeat])).asOriginal());
   c.ids[seat.originalID()] = 'body';
   c.ids[pin.originalID()] = 'body';
