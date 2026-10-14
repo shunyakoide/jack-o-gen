@@ -1,6 +1,6 @@
 // プリント適性チェック。赤＝出力不可、黄＝警告、緑＝OK。
 
-import type { Params } from '../model/params';
+import type { Params, PartKey } from '../model/params';
 import type { FaceCheck } from './face/layout';
 import type { Vec3 } from './layout';
 import { ledHole } from './body';
@@ -14,6 +14,8 @@ export interface CheckItem {
   /** 表示文のキー（UI 側で翻訳する）。label は `check.<id>`、detail は `check.<id>.<detail>` */
   detail: string;
   vars: Record<string, string | number>;
+  /** 原因の顔パーツ（警告を押すとエディタで選ぶ） */
+  parts?: PartKey[];
 }
 
 export interface CheckInput {
@@ -75,12 +77,14 @@ export function runChecks(p: Params, c: CheckInput): { items: CheckItem[]; level
       level: f.tinyHoles > 0 || f.thinHoleArea > 1 ? 'yellow' : 'green',
       detail: f.tinyHoles > 0 ? 'tiny' : f.thinHoleArea > 1 ? 'thin' : 'ok',
       vars: { n: f.tinyHoles || f.holeCount, area: f.thinHoleArea.toFixed(0) },
+      parts: f.holeParts,
     });
     items.push({
       id: 'link',
       level: f.mergedHoles > 0 || f.narrowBridgeArea > 1 ? 'yellow' : 'green',
       detail: f.mergedHoles > 0 ? 'merged' : f.narrowBridgeArea > 1 ? 'narrow' : 'ok',
       vars: { n: f.mergedHoles },
+      parts: f.linkParts,
     });
     if (f.islands > 0) {
       items.push({ id: 'island', level: 'green', detail: 'added', vars: { n: f.islands, w: p.bridge } });

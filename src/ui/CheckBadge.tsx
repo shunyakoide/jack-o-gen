@@ -32,6 +32,8 @@ export function CheckList({ problems = false }: { problems?: boolean }) {
   const t = useT();
   const preview = useStore((s) => s.preview);
   const setTab = useStore((s) => s.setTab);
+  const selectPart = useStore((s) => s.selectPart);
+  const symmetric = useStore((s) => s.params.face.symmetric);
   // スマホでは項目名だけにたたみ、押すたびに直し方の表示を開閉する（かぼちゃを隠さないため）
   const [open, setOpen] = useState(false);
   const items = preview?.checks.filter((c) => !problems || c.level !== 'green') ?? [];
@@ -44,7 +46,14 @@ export function CheckList({ problems = false }: { problems?: boolean }) {
             <span className="dot" aria-hidden />
             <div>
               <div className="check-label">{t(`check.${c.id}`, c.vars)}</div>
-              <div className="check-detail">{t(`check.${c.id}.${c.detail}`, c.vars)}</div>
+              <div className="check-detail">
+                {t(`check.${c.id}.${c.detail}`, c.vars)}
+                {!!c.parts?.length && (
+                  <span className="check-parts">
+                    {[...new Set(c.parts.map((k) => (symmetric && k.startsWith('eye') ? 'part.eyes' : `part.${k}`)))].map((k) => t(k)).join('・')}
+                  </span>
+                )}
+              </div>
               {c.level !== 'green' && <div className="check-fix">{t(`check.${c.id}.${c.detail}.fix`, c.vars)}</div>}
             </div>
           </>
@@ -56,6 +65,9 @@ export function CheckList({ problems = false }: { problems?: boolean }) {
                 type="button"
                 onClick={() => {
                   setTab(FIX_TAB[`${c.id}.${c.detail}`] ?? 'shape');
+                  // 原因が複数あれば押すたびに次のパーツを選ぶ。対称のときは右目を左目（両目のボタン）として扱う
+                  const ps = [...new Set((c.parts ?? []).map((k) => (symmetric && k === 'eyeR' ? 'eyeL' : k)))];
+                  if (ps.length) selectPart(ps[(ps.indexOf(useStore.getState().selectedPart) + 1) % ps.length]);
                   setOpen(!open);
                 }}
               >

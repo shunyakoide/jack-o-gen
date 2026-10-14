@@ -125,6 +125,21 @@ describe('buildPumpkin', () => {
     expect(r.checks.find((c) => c.id === 'manifold')!.level).toBe('green');
   });
 
+  it('警告には原因のパーツが付く', () => {
+    const tiny = defaultParams();
+    tiny.face.nose = { ...tiny.face.nose, w: 2, h: 2 };
+    const h = summary(tiny, 'draft').r.checks.find((c) => c.id === 'hole')!;
+    expect([h.level, h.parts]).toEqual(['yellow', ['nose']]);
+
+    const close = defaultParams();
+    close.face.symmetric = false;
+    close.face.eyeR = { ...close.face.eyeR, x: 18, y: 4 };
+    const l = summary(close, 'draft').r.checks.find((c) => c.id === 'link')!;
+    expect(l.level).toBe('yellow');
+    expect(l.parts).toEqual(expect.arrayContaining(['eyeR', 'nose']));
+    expect(l.parts).not.toContain('eyeL');
+  });
+
   it('穴が近すぎると連結部の警告が出る', () => {
     const p = defaultParams();
     p.face.eyeL = { ...p.face.eyeL, x: -1.2, w: 2 };
