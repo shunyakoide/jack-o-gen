@@ -30,6 +30,8 @@ interface State {
   activePreset: string | null;
   /** プリセット適用直後：ビルド結果がベッドに収まらなければ直径を縮める */
   fitToBed: boolean;
+  /** fitBed で縮める前の直径（縮めたことを知らせる。次の操作で消える） */
+  shrunkFrom: number | null;
   /** 元に戻す / やり直す用のパラメータ履歴 */
   past: Params[];
   future: Params[];
@@ -70,10 +72,10 @@ export function endGesture() {
 }
 
 /** params を変更しつつ履歴に積む */
-function track(s: State, params: Params): Pick<State, 'params' | 'past' | 'future' | 'fitToBed'> {
+function track(s: State, params: Params): Pick<State, 'params' | 'past' | 'future' | 'fitToBed' | 'shrunkFrom'> {
   const past = gesture === 'pushed' ? s.past : [...s.past, s.params].slice(-50);
   if (gesture === 'open') gesture = 'pushed';
-  return { params, past, future: [], fitToBed: false };
+  return { params, past, future: [], fitToBed: false, shrunkFrom: null };
 }
 
 /** プリセットを選んでも変えない設定（大きさと印刷まわり） */
@@ -88,19 +90,20 @@ export const useStore = create<State>((set) => ({
   error: null,
   activePreset: null,
   fitToBed: false,
+  shrunkFrom: null,
   past: [],
   future: [],
   undo: () =>
     set((s) => {
       if (!s.past.length) return {};
       endGesture();
-      return { params: s.past[s.past.length - 1], past: s.past.slice(0, -1), future: [s.params, ...s.future], activePreset: null };
+      return { params: s.past[s.past.length - 1], past: s.past.slice(0, -1), future: [s.params, ...s.future], activePreset: null, shrunkFrom: null };
     }),
   redo: () =>
     set((s) => {
       if (!s.future.length) return {};
       endGesture();
-      return { params: s.future[0], past: [...s.past, s.params], future: s.future.slice(1), activePreset: null };
+      return { params: s.future[0], past: [...s.past, s.params], future: s.future.slice(1), activePreset: null, shrunkFrom: null };
     }),
   setNum: (key, v) =>
     set((s) => ({ ...track(s, { ...s.params, [key]: clampNum(NUM_DEF_BY_KEY[key], v) }), activePreset: null })),
@@ -146,7 +149,7 @@ export const useStore = create<State>((set) => ({
       // 本体とヘタの間隔（PRINT_GAP）だけは縮まないので、その分を除いた比率で縮める。
       // 粗い draft の寸法で測ることもあるので、4 mm 内側を狙う
       const d = clampNum(def, Math.floor((p.diameter * (BED_SIZE - 4 - PRINT_GAP)) / (bedMax - PRINT_GAP)));
-      return { params: { ...p, diameter: d } };
+      return { params: { ...p, diameter: d }, shrunkFrom: s.shrunkFrom ?? p.diameter };
     }),
   setPreview: (preview, error = null) => set({ preview, error }),
   setBuilding: (building) => set({ building }),

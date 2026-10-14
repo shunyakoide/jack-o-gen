@@ -15,6 +15,7 @@ describe('プリセット', () => {
     useStore.setState({ params: { ...defaultParams(), diameter: 240 }, fitToBed: true });
     useStore.getState().fitBed(useStore.getState().params, 275);
     expect(useStore.getState().params.diameter).toBe(213);
+    expect(useStore.getState().shrunkFrom).toBe(240);
     useStore.getState().fitBed(useStore.getState().params, 244);
     expect(useStore.getState().fitToBed).toBe(false);
   });
