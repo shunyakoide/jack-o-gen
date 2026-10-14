@@ -112,9 +112,8 @@ describe('buildPumpkin', () => {
     }
   });
 
-  it('A1 に収まらなければサイズチェックが黄（大きいプリンター向けに出力は止めない）', () => {
+  it('スライダーの端より大きくしても形は壊れず、出力も止めない', () => {
     const { r } = summary({ ...defaultParams(), diameter: 400 }, 'draft');
-    expect(r.checks.find((c) => c.id === 'bed')!.level).toBe('yellow');
     expect(r.checks.find((c) => c.id === 'manifold')!.level).toBe('green');
     expect(r.level).not.toBe('red');
   });

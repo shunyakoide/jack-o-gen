@@ -67,7 +67,7 @@ export function ExportPanel() {
           {files.map(([f, [w, d, h]]) => (
             <li key={f}>
               <span className="file-name">{f}</span>
-              <span>{t('check.bed.size', { w: w.toFixed(0), d: d.toFixed(0), h: h.toFixed(0) })}</span>
+              <span>{t('sizeMm', { w: w.toFixed(0), d: d.toFixed(0), h: h.toFixed(0) })}</span>
             </li>
           ))}
         </ul>

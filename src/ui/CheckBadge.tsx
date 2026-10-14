@@ -19,7 +19,6 @@ export function CheckBadge() {
 /** 警告ごとに、直し方に書いた操作があるタブ。ここにない判定は形タブ */
 const FIX_TAB: Record<string, TabId> = {
   'manifold.parts': 'face',
-  'bed.pair': 'print',
   'base.ledTooBig': 'print',
   'hole.tiny': 'face',
   'hole.thin': 'face',

@@ -6,7 +6,6 @@ import { runChecks, type CheckItem, type CheckLevel } from './checks';
 import { FACE_REF_DIAMETER, layoutFace, subdivide, type FaceCheck } from './face/layout';
 import type { Pt } from './face/presets';
 import { Scope, type Manifold, type Wasm } from './manifold';
-import { boxOf, partSize, PRINT_GAP, type Vec3 } from './layout';
 import { buildStem, FIT, stemPin, stemSeatRadius } from './stem';
 
 // draft = スライダー操作中の粗いプレビュー
@@ -289,18 +288,11 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
       maxDiameter: info.rMax * 2,
       rEq: info.rEq,
     };
-    // ベッド判定は書き出しと同じ配置（差し込み式はヘタを +x 側に並べる）で測る
-    const bodySize: Vec3 = [stats.width, stats.depth, stats.height];
-    const stemSize = stemPart && partSize(boxOf(stemPart.positions), stemPart.seatZ);
-    const bed: Vec3 = stemSize
-      ? [bodySize[0] + PRINT_GAP + stemSize[0], Math.max(bodySize[1], stemSize[1]), Math.max(bodySize[2], stemSize[2])]
-      : bodySize;
     const { items, level } = runChecks(p, {
       status: result.status(),
       empty: result.isEmpty(),
       components: cleaned.components,
       stats,
-      bed,
       peg,
       face: face.check,
     });

@@ -2,7 +2,6 @@
 
 import type { Params, PartKey } from '../model/params';
 import type { FaceCheck } from './face/layout';
-import type { Vec3 } from './layout';
 import { ledHole } from './body';
 import { FIT } from './stem';
 
@@ -23,15 +22,10 @@ export interface CheckInput {
   empty: boolean;
   components: number;
   stats: { contactDiameter: number; maxDiameter: number };
-  /** ベッド上の占有寸法 [x, y, z]（差し込み式は本体＋横に並べたヘタ） */
-  bed: Vec3;
   /** 差し込み式のピン寸法。fits=false はヘタが細すぎて最小ピンでも肉厚が残らない */
   peg: { rp: number; hp: number; fits: boolean } | null;
   face: FaceCheck;
 }
-
-/** Bambu A1 の造形範囲。大きいプリンターもあるので超えても出力は止めず、黄色で知らせるだけ */
-export const BED_SIZE = 250;
 
 export function runChecks(p: Params, c: CheckInput): { items: CheckItem[]; level: CheckLevel } {
   const items: CheckItem[] = [];
@@ -42,14 +36,6 @@ export function runChecks(p: Params, c: CheckInput): { items: CheckItem[]; level
     level: okMesh && c.components === 1 ? 'green' : 'red',
     detail: !okMesh ? 'broken' : c.components === 1 ? 'ok' : 'parts',
     vars: { status: c.status, n: c.components },
-  });
-
-  const [w, d, h] = c.bed;
-  items.push({
-    id: 'bed',
-    level: Math.max(w, d, h) <= BED_SIZE ? 'green' : 'yellow',
-    detail: c.peg ? 'pair' : 'size',
-    vars: { bed: BED_SIZE, w: w.toFixed(0), d: d.toFixed(0), h: h.toFixed(0) },
   });
 
   if (c.peg) {
