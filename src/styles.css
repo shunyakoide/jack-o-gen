@@ -266,6 +266,8 @@ input[type='range']:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(
 .checks .dot { margin-top: 5px; }
 .check-label { font-weight: 600; font-size: 13px; }
 .check-detail { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.check-fix { font-size: 12px; line-height: 1.5; margin-top: 2px; }
+.check-fix::before { content: '→ '; color: var(--muted); }
 
 .export { display: flex; flex-direction: column; gap: 10px; }
 .stats { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-variant-numeric: tabular-nums; }
