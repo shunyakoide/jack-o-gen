@@ -128,9 +128,10 @@ export const FIT = {
   chamfer: 1,
   /** 穴のまわりに残すヘタの肉厚（0.4 mm ノズルで 3 周。2 周では差し込むときに割れた） */
   minWall: 1.2,
-  /** ピン半径の上限・下限 */
+  /** ピン半径の上限・下限。上限はヘタが太ければ足元の半径 × pinRatio まで広げる（太いヘタに細いピンだと頼りない） */
   pinMax: 4,
   pinMin: 1.5,
+  pinRatio: 0.55,
 };
 
 /** 座ぐりの半径：本体表面の位置ではフレアが最大（1 + 0.9·flare） */
@@ -156,10 +157,10 @@ export function stemPin(p: Params, zTop: number, zSeat: number): { rp: number; h
   }
   // メッシュの折れ線近似で細る分の余裕
   const margin = 0.05;
-  const rpFor = (hp: number) => {
+  const rpFor = (hp: number, cap: number) => {
     const top = zSeat + hp + FIT.holeExtra;
     if (top + FIT.minWall > z1) return -Infinity;
-    let rp = FIT.pinMax;
+    let rp = cap;
     for (const [z, d] of prof) {
       if (z < zSeat || z > top + FIT.minWall) continue;
       const ch = Math.max(0, FIT.chamfer - (z - zSeat));
@@ -170,10 +171,21 @@ export function stemPin(p: Params, zTop: number, zSeat: number): { rp: number; h
   const hp0 = Math.min(8, 0.5 * p.stemHeight * p.diameter);
   // 深さ 4 mm までは太さを優先する（細く深いピンは差し込むときに折れる）。太さがほぼ変わらない範囲でいちばん深く
   const cands: { rp: number; hp: number }[] = [];
-  for (let hp = hp0; hp >= Math.min(hp0, 2); hp -= 0.5) cands.push({ rp: rpFor(hp), hp });
+  for (let hp = hp0; hp >= Math.min(hp0, 2); hp -= 0.5) cands.push({ rp: rpFor(hp, FIT.pinMax), hp });
   const deep = cands.filter((c) => c.hp >= Math.min(hp0, 4));
   const best = Math.max(...deep.map((c) => c.rp));
   const pick = best >= FIT.pinMin ? deep.find((c) => c.rp >= best - 0.25) : cands.find((c) => c.rp >= FIT.pinMin);
-  if (pick) return { ...pick, fits: true };
+  if (pick) {
+    // 太いヘタは上限を足元の半径 × pinRatio まで広げ、上の深さ以上（深さの上限は広げた直径）でいちばん太いピンにする。
+    // 元の答えも候補に入るので、細くも浅くもならない
+    const cap = FIT.pinRatio * p.stemRadius * p.diameter * 0.5;
+    if (cap <= FIT.pinMax) return { ...pick, fits: true };
+    const hpMax = Math.min(2 * cap, 0.5 * p.stemHeight * p.diameter);
+    const wide: { rp: number; hp: number }[] = [];
+    for (let hp = pick.hp; hp <= hpMax; hp += 0.5) wide.push({ rp: rpFor(hp, cap), hp });
+    const top = Math.max(...wide.map((c) => c.rp));
+    const ok = wide.filter((c) => c.rp >= Math.max(pick.rp, top - 0.25));
+    return { ...ok[ok.length - 1], fits: true };
+  }
   return { rp: FIT.pinMin, hp: Math.min(hp0, 2), fits: false };
 }

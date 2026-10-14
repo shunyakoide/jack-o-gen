@@ -51,3 +51,16 @@ describe('ヘタ差し込み式', () => {
     expect(cachedBuild(wasm, defaultParams(), 'draft').stem).toBeUndefined();
   });
 });
+
+describe('ピンの太さ', () => {
+  const pin = (p: Partial<Params>) => {
+    const v = cachedBuild(wasm, { ...defaultParams(), ...p, stemAttach: 'peg' }, 'draft').checks.find((c) => c.id === 'peg')!.vars;
+    return [+v.d, +v.h];
+  };
+  it('太いヘタは大きいピンになり、基準の太さのヘタは変わらない', () => {
+    expect(pin({ diameter: 120 })).toEqual([4.2, 4.5]);
+    const [d, h] = pin({ diameter: 240, stemRadius: 0.16 });
+    expect(d).toBeGreaterThan(15);
+    expect(h).toBeGreaterThanOrEqual(8);
+  });
+});
