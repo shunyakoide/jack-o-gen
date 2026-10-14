@@ -3,6 +3,7 @@
 import type { Params } from '../model/params';
 import type { FaceCheck } from './face/layout';
 import type { Vec3 } from './layout';
+import { ledHole } from './body';
 import { FIT } from './stem';
 
 export type CheckLevel = 'red' | 'yellow' | 'green';
@@ -58,12 +59,13 @@ export function runChecks(p: Params, c: CheckInput): { items: CheckItem[]; level
   }
 
   const ratio = c.stats.contactDiameter / c.stats.maxDiameter;
-  const ledFits = p.led + 2 * p.wall + 2 <= c.stats.contactDiameter;
+  const led = ledHole(p);
+  const ledFits = led + 2 * p.wall + 2 <= c.stats.contactDiameter;
   items.push({
     id: 'base',
     level: ratio >= 0.35 && ledFits ? 'green' : 'red',
     detail: ledFits ? 'led' : 'ledTooBig',
-    vars: { d: c.stats.contactDiameter.toFixed(0), pct: Math.round(ratio * 100), led: p.led },
+    vars: { d: c.stats.contactDiameter.toFixed(0), pct: Math.round(ratio * 100), led: led.toFixed(0) },
   });
 
   const f = c.face;
