@@ -1,8 +1,20 @@
 // 顔パーツを展開図（mm）上の 2D 形状にまとめ、尖頭アーチ化・島のブリッジ・2D チェックを行う。
 
-import { applySymmetry, PART_KEYS, PART_KIND, type FaceParams, type FacePart, type PartKey, type Params } from '../../model/params';
+import {
+  applySymmetry,
+  drawnKey,
+  PART_KEYS,
+  PART_KIND,
+  type FaceParams,
+  type FacePart,
+  type PartBox,
+  type PartKey,
+  type Params,
+  type SelKey,
+} from '../../model/params';
 import { buildBody, DRAFT_RES } from '../body';
 import type { CrossSection, Scope, Wasm } from '../manifold';
+import { drawnPolygons } from './draw';
 import { findPreset, type Pt } from './presets';
 
 /** 顔パラメータは直径 120mm 基準の mm。実寸へはこの比で拡大縮小する */
@@ -21,13 +33,13 @@ export function clampFace(p: Params): FaceParams {
   const m = p.floor + 2;
   const bMin = Math.atan2(info.zCenter - m, rBase + m);
   const yMin = (-bMin * info.rEq * FACE_REF_DIAMETER) / p.diameter;
-  const face = { ...p.face };
-  for (const k of PART_KEYS) {
-    const q = face[k];
+  const lift = <T extends PartBox>(q: T): T => {
     const a = (q.rot * Math.PI) / 180;
     const ext = (Math.abs(q.w * Math.sin(a)) + Math.abs(q.h * Math.cos(a))) / 2;
-    if (q.y - ext < yMin) face[k] = { ...q, y: yMin + ext };
-  }
+    return q.y - ext < yMin ? { ...q, y: yMin + ext } : q;
+  };
+  const face = { ...p.face, drawn: p.face.drawn.map(lift) };
+  for (const k of PART_KEYS) face[k] = lift(face[k]);
   return face;
 }
 
@@ -64,7 +76,7 @@ function ccw(poly: Pt[]): Pt[] {
 
 /**
  * 穴の天井（穴の内側が下にある、傾き 45° 未満の辺）を 45° の山形に置き換える。
- * 長い天井は幅 maxSpan ごとの連続した山（ノコギリ屋根）にする。
+ * 幅 2·maxSpan を超える長い天井は、幅 maxSpan ごとの連続した山（ノコギリ屋根）にする。
  */
 export function archTents(contours: Pt[][], minSpan: number, maxSpan: number): Pt[][] {
   const tents: Pt[][] = [];
@@ -104,7 +116,8 @@ export function archTents(contours: Pt[][], minSpan: number, maxSpan: number): P
       const xB = run[run.length - 1][0];
       const span = xA - xB;
       if (span < minSpan) continue;
-      const pieces = Math.ceil(span / maxSpan);
+      // maxSpan の 2 倍までは 1 つの尖頭アーチにする（丸い穴の上が小さな山の連なりで王冠のようにならないように）
+      const pieces = span <= 2 * maxSpan ? 1 : Math.ceil(span / maxSpan);
       const yAt = (x: number) => {
         for (let k = 0; k < run.length - 1; k++) {
           const [x0, y0] = run[k];
@@ -118,7 +131,8 @@ export function archTents(contours: Pt[][], minSpan: number, maxSpan: number): P
         const xb = xA - (span * (m + 1)) / pieces;
         const A: Pt = [xa, yAt(xa)];
         const B: Pt = [xb, yAt(xb)];
-        const pts: Pt[] = [A, ...run.filter(([x]) => x < xa && x > xb), B];
+        // 底辺は穴の内側へ 0.1 mm 沈める（天井の辺と線で接するだけだと、丸め誤差で尖りが独立した小穴になる）
+        const pts: Pt[] = [A, ...run.filter(([x]) => x < xa && x > xb), B].map(([x, y]): Pt => [x, y - 0.1]);
         // A から左上 45°、B から右上 45° の交点
         const ax = (A[1] + A[0] - B[1] + B[0]) / 2;
         const ay = B[1] + ax - B[0];
@@ -129,6 +143,9 @@ export function archTents(contours: Pt[][], minSpan: number, maxSpan: number): P
   }
   return tents;
 }
+
+/** 細い穴・細い連結部をこの面積 [mm²] を超えたら警告する */
+export const AREA_TOL = 1;
 
 export interface FaceCheck {
   /** 2mm 未満の細い穴の部分の面積 [mm²] */
@@ -142,9 +159,11 @@ export interface FaceCheck {
   islands: number;
   holeCount: number;
   /** 細い・小さい穴を含むパーツ */
-  holeParts: PartKey[];
+  holeParts: SelKey[];
   /** 3mm 未満の連結部に面しているパーツ */
-  linkParts: PartKey[];
+  linkParts: SelKey[];
+  /** 細い穴・細い連結部の領域（展開図 mm、エディタで赤く塗る） */
+  problems: [number, number][][];
 }
 
 export interface FaceLayout {
@@ -165,7 +184,7 @@ export function layoutFace(
   const { CrossSection } = wasm;
   const face = applySymmetry(faceIn);
   const parts: CrossSection[] = [];
-  const keys: PartKey[] = [];
+  const keys: SelKey[] = [];
   for (const key of PART_KEYS) {
     const { holes, islands } = partPolygons(key, face[key], opts.scale);
     if (!holes.length) continue;
@@ -174,8 +193,16 @@ export function layoutFace(
     parts.push(part);
     keys.push(key);
   }
+  face.drawn.forEach((d, i) => {
+    let part = scope.keep(new CrossSection(drawnPolygons(d, opts.scale).map(ccw), 'NonZero'));
+    // 手描きの面は外形だけを使う（自己交差でできた内側の抜けが島＋ブリッジにならないように）
+    if (!d.line) part = scope.keep(new CrossSection((part.toPolygons() as Pt[][]).filter((q) => signedArea(q) > 0), 'NonZero'));
+    if (part.isEmpty()) return;
+    parts.push(part);
+    keys.push(drawnKey(i));
+  });
   const empty: FaceCheck = {
-    thinHoleArea: 0, tinyHoles: 0, narrowBridgeArea: 0, mergedHoles: 0, islands: 0, holeCount: 0, holeParts: [], linkParts: [],
+    thinHoleArea: 0, tinyHoles: 0, narrowBridgeArea: 0, mergedHoles: 0, islands: 0, holeCount: 0, holeParts: [], linkParts: [], problems: [],
   };
   if (!parts.length) return { cs: null, check: empty };
   let cs = scope.keep(CrossSection.union(parts));
@@ -219,7 +246,7 @@ export function layoutFace(
     return own.length ? own : keys.filter((_, i) => touches(c, scope.keep(partsK[i].offset(rL, 'Round'))));
   });
   const keysOf = (hit: (c: CrossSection, i: number) => boolean) => {
-    const out = new Set<PartKey>();
+    const out = new Set<SelKey>();
     comps.forEach((c, i) => hit(c, i) && compKeys[i].forEach((key) => out.add(key)));
     return keys.filter((key) => out.has(key));
   };
@@ -227,9 +254,24 @@ export function layoutFace(
   const holeParts = keysOf((c) => touches(c, holeRegion));
   // 連結部に面している穴と、広げると別の穴とつながる穴
   const shared = grownComps.map((g) => comps.filter((c) => touches(c, g)).length > 1);
+  const compsGrown = comps.map((c) => scope.keep(c.offset(rL, 'Round')));
   const linkParts = keysOf(
-    (c) => touches(scope.keep(c.offset(rL, 'Round')), narrowRegion) || grownComps.some((g, j) => shared[j] && touches(c, g)),
+    (c, i) => touches(compsGrown[i], narrowRegion) || grownComps.some((g, j) => shared[j] && touches(c, g)),
   );
+  // 赤く塗る領域：削った sliver ぶん戻し、展開図 mm へ縮尺を戻す。警告にならない程度（AREA_TOL 以下）のものは塗らない
+  const bad = [thinRegion, narrowRegion].filter((r) => r.area() > AREA_TOL).map((r) => scope.keep(r.offset(sliver, 'Round')));
+  // 近すぎる穴の組は、両方を rL 広げて重なる所（＝細いすき間）を塗る
+  if (comps.length > grownComps.length) {
+    for (let i = 0; i < comps.length; i++) {
+      for (let j = i + 1; j < comps.length; j++) {
+        const gap = scope.keep(scope.keep(compsGrown[i].intersect(compsGrown[j])).subtract(scaled));
+        if (!gap.isEmpty()) bad.push(gap);
+      }
+    }
+  }
+  const problemCs = bad.length || tiny.length ? scope.keep(CrossSection.union([...bad, ...tiny])) : null;
+  const back = 1 / (k * opts.scale);
+  const problems = ((problemCs?.toPolygons() ?? []) as Pt[][]).map((poly) => poly.map(([x, y]): Pt => [x * back, y * back]));
 
   // 島（穴の内側の材料）を、下向きのブリッジで縁とつなぐ
   let islands = 0;
@@ -276,6 +318,7 @@ export function layoutFace(
       holeCount: comps.length,
       holeParts,
       linkParts,
+      problems,
     },
   };
 }

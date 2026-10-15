@@ -1,7 +1,7 @@
 // プリント適性チェック。赤＝出力不可、黄＝警告、緑＝OK。
 
-import type { Params, PartKey } from '../model/params';
-import type { FaceCheck } from './face/layout';
+import type { Params, SelKey } from '../model/params';
+import { AREA_TOL, type FaceCheck } from './face/layout';
 import { ledHole } from './body';
 import { FIT } from './stem';
 
@@ -14,7 +14,7 @@ export interface CheckItem {
   detail: string;
   vars: Record<string, string | number>;
   /** 原因の顔パーツ（警告を押すとエディタで選ぶ） */
-  parts?: PartKey[];
+  parts?: SelKey[];
 }
 
 export interface CheckInput {
@@ -61,15 +61,15 @@ export function runChecks(p: Params, c: CheckInput): { items: CheckItem[]; level
   if (f.holeCount > 0) {
     items.push({
       id: 'hole',
-      level: f.tinyHoles > 0 || f.thinHoleArea > 1 ? 'yellow' : 'green',
-      detail: f.tinyHoles > 0 ? 'tiny' : f.thinHoleArea > 1 ? 'thin' : 'ok',
+      level: f.tinyHoles > 0 || f.thinHoleArea > AREA_TOL ? 'yellow' : 'green',
+      detail: f.tinyHoles > 0 ? 'tiny' : f.thinHoleArea > AREA_TOL ? 'thin' : 'ok',
       vars: { n: f.tinyHoles || f.holeCount, area: f.thinHoleArea.toFixed(0) },
       parts: f.holeParts,
     });
     items.push({
       id: 'link',
-      level: f.mergedHoles > 0 || f.narrowBridgeArea > 1 ? 'yellow' : 'green',
-      detail: f.mergedHoles > 0 ? 'merged' : f.narrowBridgeArea > 1 ? 'narrow' : 'ok',
+      level: f.mergedHoles > 0 || f.narrowBridgeArea > AREA_TOL ? 'yellow' : 'green',
+      detail: f.mergedHoles > 0 ? 'merged' : f.narrowBridgeArea > AREA_TOL ? 'narrow' : 'ok',
       vars: { n: f.mergedHoles },
       parts: f.linkParts,
     });

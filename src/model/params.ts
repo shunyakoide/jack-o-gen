@@ -4,9 +4,8 @@
 export type StemAttach = 'fused' | 'peg';
 export type PartKind = 'eye' | 'nose' | 'mouth';
 
-export interface FacePart {
-  /** プリセット名（face/presets.ts） */
-  preset: string;
+/** 展開図上の配置。顔パーツと描いた形で共通 */
+export interface PartBox {
   /** 展開図上の中心 [mm]。x は赤道に沿った弧長、y は赤道からの子午線方向の弧長 */
   x: number;
   y: number;
@@ -17,12 +16,30 @@ export interface FacePart {
   rot: number;
 }
 
+export interface FacePart extends PartBox {
+  /** プリセット名（face/presets.ts） */
+  preset: string;
+}
+
+/** 手描きの形。pts は単位正方形 [-1,1]² に正規化した点（w・h・rot で展開図に置く） */
+export interface DrawnPart extends PartBox {
+  pts: [number, number][];
+  /** 中心線の反対側にも鏡像を切り抜く */
+  mirror: boolean;
+  /** 0 = なぞって囲った面、> 0 = この太さ [mm] の線 */
+  line: number;
+}
+
+/** 描いた形の数の上限（URL の長さと CSG の重さのため） */
+export const MAX_DRAWN = 8;
+
 export interface FaceParams {
   symmetric: boolean;
   eyeL: FacePart;
   eyeR: FacePart;
   nose: FacePart;
   mouth: FacePart;
+  drawn: DrawnPart[];
 }
 
 export interface NumParams {
@@ -139,6 +156,7 @@ export function defaultFace(): FaceParams {
     eyeR: { preset: 'triangle', x: 24, y: 14, w: 22, h: 20, rot: 0 },
     nose: { preset: 'triangle', x: 0, y: -2, w: 12, h: 11, rot: 0 },
     mouth: { preset: 'jagged', x: 0, y: -20, w: 62, h: 24, rot: 0 },
+    drawn: [],
   };
 }
 
@@ -170,3 +188,9 @@ export function applySymmetry(face: FaceParams): FaceParams {
 export const PART_KEYS = ['eyeL', 'eyeR', 'nose', 'mouth'] as const;
 export type PartKey = (typeof PART_KEYS)[number];
 export const PART_KIND: Record<PartKey, PartKind> = { eyeL: 'eye', eyeR: 'eye', nose: 'nose', mouth: 'mouth' };
+
+/** エディタで選べるもの：顔パーツか、描いた形（d0, d1, …） */
+export type SelKey = PartKey | `d${number}`;
+export const drawnKey = (i: number): SelKey => `d${i}`;
+/** 描いた形の番号。顔パーツなら -1 */
+export const drawnIndex = (k: SelKey): number => (k[0] === 'd' ? Number(k.slice(1)) : -1);

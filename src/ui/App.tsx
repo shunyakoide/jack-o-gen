@@ -28,8 +28,14 @@ export function App() {
   const setLang = useLang((s) => s.setLang);
   const tab = useStore((s) => s.tab);
   const setTab = useStore((s) => s.setTab);
+  const drawing = useStore((s) => s.pen !== 'off' && s.tab === 'face');
   const [sheet, setSheet] = useState<'half' | 'full' | 'min'>('half');
-  const [toast, setToast] = useState<string | null>(null);
+  const undo = useStore((s) => s.undo);
+  const redo = useStore((s) => s.redo);
+  const canUndo = useStore((s) => s.past.length > 0);
+  const canRedo = useStore((s) => s.future.length > 0);
+  const toast = useStore((s) => s.toast);
+  const showToast = useStore((s) => s.showToast);
   const [hint, setHint] = useState(FIRST_VISIT);
 
   // ⌘Z / Ctrl+Z で元に戻す、⇧ 付きか Ctrl+Y でやり直す（数値入力欄は自前の取り消しに任せる）
@@ -52,15 +58,14 @@ export function App() {
     const url = shareUrl(useStore.getState().params);
     try {
       await navigator.clipboard.writeText(url);
-      setToast(t('copied'));
+      showToast('copied');
     } catch {
       window.prompt(t('copyPrompt'), url);
     }
-    setTimeout(() => setToast(null), 2000);
   };
 
   return (
-    <div className={`app sheet-${sheet}`}>
+    <div className={`app sheet-${sheet}${drawing ? ' drawing' : ''}`}>
       <header className="topbar">
         <h1>
           <img className="brand-mark" src="/brand/pumpkin-small.png" width="96" height="64" alt="" />
@@ -94,24 +99,35 @@ export function App() {
             </p>
           )}
           <PresetCards />
-          <nav className="tabs" role="tablist">
-            {TABS.map((id) => (
-              <button
-                key={id}
-                role="tab"
-                id={`tab-${id}`}
-                aria-controls="tab-panel"
-                aria-selected={tab === id}
-                className={tab === id ? 'on' : ''}
-                onClick={() => {
-                  setTab(id);
-                  if (sheet === 'min') setSheet('half');
-                }}
-              >
-                {t(`tab.${id}`)}
+          <div className="tabbar">
+            <nav className="tabs" role="tablist">
+              {TABS.map((id) => (
+                <button
+                  key={id}
+                  role="tab"
+                  id={`tab-${id}`}
+                  aria-controls="tab-panel"
+                  aria-selected={tab === id}
+                  className={tab === id ? 'on' : ''}
+                  onClick={() => {
+                    setTab(id);
+                    if (sheet === 'min') setSheet('half');
+                  }}
+                >
+                  {t(`tab.${id}`)}
+                </button>
+              ))}
+            </nav>
+            {/* 戻る・進むは操作するパネルの上、スクロールしないタブの行に置く。タブとは区切った別のまとまりにする */}
+            <div className="history" role="group" aria-label={t('history')}>
+              <button className="icon-btn" onClick={undo} disabled={!canUndo} title={`${t('undo')} (⌘Z)`} aria-label={t('undo')}>
+                <svg viewBox="0 0 24 24" aria-hidden><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>
               </button>
-            ))}
-          </nav>
+              <button className="icon-btn" onClick={redo} disabled={!canRedo} title={`${t('redo')} (⇧⌘Z)`} aria-label={t('redo')}>
+                <svg viewBox="0 0 24 24" aria-hidden><path d="m15 14 5-5-5-5" /><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" /></svg>
+              </button>
+            </div>
+          </div>
           <div className="tab-body" role="tabpanel" id="tab-panel" aria-labelledby={`tab-${tab}`}>
             <TabContent tab={tab} />
           </div>
@@ -123,7 +139,7 @@ export function App() {
       </main>
       {/* ライブリージョンは常に置いておき、中身の出し入れで読み上げさせる */}
       <div role="status" aria-live="polite">
-        {toast && <div className="toast">{toast}</div>}
+        {toast && <div className="toast">{t(toast)}</div>}
       </div>
     </div>
   );

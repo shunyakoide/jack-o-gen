@@ -1,8 +1,10 @@
-// 顔パーツを 2D 展開図上でドラッグして位置・大きさ・回転を調整するエディタ。
+// 顔パーツを 2D 展開図上でドラッグして位置・大きさ・回転を調整するエディタ。ペンで形を描き足すこともできる。
 // 座標は直径 120mm 基準の mm（x：赤道に沿った弧長、y：赤道からの弧長、上が +）。
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { crossesCenter, finishLine, finishStroke, LINE_WIDTH, mirrorX, placeDrawn, toDrawn } from '../../geometry/face/draw';
 import { partPolygons } from '../../geometry/face/layout';
-import { applySymmetry, PART_KEYS, type FacePart, type PartKey } from '../../model/params';
+import type { Pt } from '../../geometry/face/presets';
+import { applySymmetry, drawnIndex, drawnKey, PART_KEYS, type PartBox, type PartKey, type SelKey } from '../../model/params';
 import { useStore } from '../../state/store';
 import { useT } from '../../i18n';
 import { holdGesture } from '../gesture';
@@ -10,12 +12,21 @@ import { holdGesture } from '../gesture';
 const VB = { x: -95, y: -58, w: 190, h: 116 };
 
 type Drag =
-  | { mode: 'move'; key: PartKey; sx: number; sy: number; part: FacePart }
-  | { mode: 'scale'; key: PartKey; part: FacePart }
-  | { mode: 'rotate'; key: PartKey; part: FacePart };
+  | { mode: 'move'; key: SelKey; sx: number; sy: number; part: PartBox; flip: boolean }
+  | { mode: 'scale'; key: SelKey; part: PartBox; min: number }
+  | { mode: 'rotate'; key: SelKey; part: PartBox };
 
-function pathOf(polys: [number, number][][]): string {
-  return polys.map((p) => 'M' + p.map(([x, y]) => `${x.toFixed(2)},${(-y).toFixed(2)}`).join('L') + 'Z').join('');
+/** 表示する 1 つの形。鏡像の写しは flip（ドラッグの左右が逆になる） */
+interface Item {
+  key: SelKey;
+  box: PartBox;
+  d: string;
+  line: number;
+  flip: boolean;
+}
+
+function pathOf(polys: Pt[][], closed = true): string {
+  return polys.map((p) => 'M' + p.map(([x, y]) => `${x.toFixed(2)},${(-y).toFixed(2)}`).join('L') + (closed ? 'Z' : '')).join('');
 }
 
 export function FaceEditor() {
@@ -24,12 +35,34 @@ export function FaceEditor() {
   const twist = useStore((s) => s.params.twist);
   const diameter = useStore((s) => s.params.diameter);
   const rEqReal = useStore((s) => s.preview?.stats.rEq);
+  const problems = useStore((s) => s.preview?.faceProblems);
   const selected = useStore((s) => s.selectedPart);
+  const pen = useStore((s) => s.pen);
+  const setPen = useStore((s) => s.setPen);
   const setPart = useStore((s) => s.setPart);
   const selectPart = useStore((s) => s.selectPart);
+  const addDrawn = useStore((s) => s.addDrawn);
+  const removeDrawn = useStore((s) => s.removeDrawn);
   const t = useT();
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
+  // 描いている途中の点列はイベントごとに ref へ足す（state だと描画の合間に来たイベントが古い値を見る）。ink は表示用の写し
+  const inkRef = useRef<Pt[] | null>(null);
+  const [ink, setInk] = useState<Pt[] | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (pen === 'off') return;
+    const onEsc = (e: KeyboardEvent) => e.key === 'Escape' && setPen('off');
+    window.addEventListener('keydown', onEsc);
+    return () => window.removeEventListener('keydown', onEsc);
+  }, [pen, setPen]);
+
+  useEffect(() => {
+    if (!msg) return;
+    const id = setTimeout(() => setMsg(null), 2200);
+    return () => clearTimeout(id);
+  }, [msg]);
 
   const shown = applySymmetry(face);
   const R = rEqReal ? (rEqReal * 120) / diameter : 58;
@@ -55,7 +88,24 @@ export function FaceEditor() {
     return lines;
   }, [ribs, twist, R]);
 
-  const toLocal = (e: React.PointerEvent): [number, number] => {
+  const items: Item[] = [];
+  for (const key of PART_KEYS) {
+    const { holes, islands } = partPolygons(key, shown[key], 1);
+    if (holes.length) items.push({ key, box: shown[key], d: pathOf([...holes, ...islands]), line: 0, flip: false });
+  }
+  face.drawn.forEach((dp, i) => {
+    placeDrawn(dp).forEach((poly, j) => {
+      items.push({ key: drawnKey(i), box: dp, d: pathOf([poly], dp.line === 0), line: dp.line, flip: j === 1 });
+    });
+  });
+
+  // 選択中の形の枠（undo などで消えていれば枠を出さない）
+  const di = drawnIndex(selected);
+  const selDrawn = di >= 0 ? face.drawn[di] : undefined;
+  const selPart = di < 0 ? shown[selected as PartKey] : undefined;
+  const sel: PartBox | null = selDrawn ?? (selPart?.preset !== 'none' ? selPart ?? null : null);
+
+  const toLocal = (e: { clientX: number; clientY: number }): [number, number] => {
     const svg = svgRef.current!;
     const pt = svg.createSVGPoint();
     pt.x = e.clientX;
@@ -72,12 +122,44 @@ export function FaceEditor() {
     setDrag(d);
   };
 
+  const startInk = (e: React.PointerEvent) => {
+    if (pen === 'off' || e.button > 0) return;
+    svgRef.current!.setPointerCapture(e.pointerId);
+    inkRef.current = [toLocal(e)];
+    setInk(inkRef.current);
+  };
+
+  const endInk = () => {
+    const raw = inkRef.current;
+    if (!raw) return;
+    inkRef.current = null;
+    setInk(null);
+    const line = pen === 'line';
+    const poly = line ? finishLine(raw) : finishStroke(raw);
+    if (!poly) return setMsg(t('drawTooSmall'));
+    if (!addDrawn(toDrawn(poly, line ? LINE_WIDTH : 0, face.symmetric && !crossesCenter(poly)))) setMsg(t('drawFull'));
+  };
+
   const onMove = (e: React.PointerEvent) => {
+    const raw = inkRef.current;
+    if (raw) {
+      // 速くなぞっても角が欠けないよう、間引かれたイベントも拾う
+      const evs = e.nativeEvent.getCoalescedEvents?.() ?? [];
+      const n = raw.length;
+      for (const ev of evs.length ? evs : [e.nativeEvent]) {
+        const q = toLocal(ev);
+        const last = raw[raw.length - 1];
+        if (Math.hypot(q[0] - last[0], q[1] - last[1]) > 0.5) raw.push(q);
+      }
+      if (raw.length > n) setInk([...raw]);
+      return;
+    }
     if (!drag) return;
     const [x, y] = toLocal(e);
     const p = drag.part;
     if (drag.mode === 'move') {
-      setPart(drag.key, { x: round(p.x + x - drag.sx), y: round(p.y + y - drag.sy) });
+      const s = drag.flip ? -1 : 1;
+      setPart(drag.key, { x: round(p.x + s * (x - drag.sx)), y: round(p.y + y - drag.sy) });
     } else {
       const dx = x - p.x;
       const dy = y - p.y;
@@ -88,37 +170,49 @@ export function FaceEditor() {
         const a = (-p.rot * Math.PI) / 180;
         const lx = dx * Math.cos(a) - dy * Math.sin(a);
         const ly = dx * Math.sin(a) + dy * Math.cos(a);
-        setPart(drag.key, { w: clamp(round(Math.abs(lx) * 2), 4, 120), h: clamp(round(Math.abs(ly) * 2), 4, 120) });
+        setPart(drag.key, { w: clamp(round(Math.abs(lx) * 2), drag.min, 120), h: clamp(round(Math.abs(ly) * 2), drag.min, 120) });
       }
     }
   };
 
-  // 矢印キーで選択パーツを 1mm（Shift で 5mm）ずつ動かす。押し続けた分は 1 手にまとめる
+  // 矢印キーで選択パーツを 1mm（Shift で 5mm）ずつ動かす。押し続けた分は 1 手にまとめる。Delete で描いた形を消す
   const onKey = (e: React.KeyboardEvent) => {
+    if ((e.key === 'Delete' || e.key === 'Backspace') && selDrawn) {
+      e.preventDefault();
+      removeDrawn(di);
+      return;
+    }
     const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[e.key];
-    if (!d) return;
+    if (!d || !sel) return;
     e.preventDefault();
     holdGesture(e);
-    const p = shown[selected];
     const k = e.shiftKey ? 5 : 1;
-    setPart(selected, { x: p.x + d[0] * k, y: p.y + d[1] * k });
+    setPart(selected, { x: sel.x + d[0] * k, y: sel.y + d[1] * k });
   };
 
-  const sel = shown[selected];
-  const selRot = (sel.rot * Math.PI) / 180;
-  const corner = rotate(sel.w / 2, -sel.h / 2, selRot);
-  const knob = rotate(0, sel.h / 2 + 7, selRot);
+  const selRot = ((sel?.rot ?? 0) * Math.PI) / 180;
+  const corner: [number, number] = sel ? rotate(sel.w / 2, -sel.h / 2, selRot) : [0, 0];
+  const knob: [number, number] = sel ? rotate(0, sel.h / 2 + 7, selRot) : [0, 0];
+  const ghost = ink && face.symmetric && !crossesCenter(ink);
 
   return (
     <svg
       ref={svgRef}
-      className={`face-editor ${drag ? 'dragging' : ''}`}
+      className={`face-editor ${drag ? 'dragging' : ''} ${pen !== 'off' ? 'pen' : ''}`}
       tabIndex={0}
       onKeyDown={onKey}
       viewBox={`${VB.x} ${VB.y} ${VB.w} ${VB.h}`}
+      onPointerDown={startInk}
       onPointerMove={onMove}
-      onPointerUp={() => setDrag(null)}
-      onPointerCancel={() => setDrag(null)}
+      onPointerUp={() => {
+        setDrag(null);
+        endInk();
+      }}
+      onPointerCancel={() => {
+        setDrag(null);
+        inkRef.current = null;
+        setInk(null);
+      }}
       role="application"
       aria-label={t('faceEditor')}
     >
@@ -133,23 +227,34 @@ export function FaceEditor() {
       ))}
       <text x={VB.x + 3} y={VB.y + 7} className="fe-label">{t('faceMap')}</text>
       <text x={(Math.PI * R) / 2 - 2} y={VB.y + 7} className="fe-label" textAnchor="end">{t('faceSide')}</text>
-      {PART_KEYS.map((key) => {
-        const { holes, islands } = partPolygons(key, shown[key], 1);
-        if (!holes.length) return null;
-        return (
-          <path
-            key={key}
-            d={pathOf([...holes, ...islands])}
-            fillRule="evenodd"
-            className={`fe-part ${key === selected ? 'selected' : ''}`}
-            onPointerDown={(e) => {
-              const [x, y] = toLocal(e);
-              start(e, { mode: 'move', key, sx: x, sy: y, part: shown[key] });
-            }}
-          />
-        );
-      })}
-      {sel.preset !== 'none' && (
+      {items.map((it, i) => (
+        <path
+          key={i}
+          d={it.d}
+          fillRule={it.line ? undefined : it.key[0] === 'd' ? 'nonzero' : 'evenodd'}
+          className={`fe-part ${it.line ? 'line' : ''} ${it.key === selected ? 'selected' : ''}`}
+          style={it.line ? { strokeWidth: it.line } : undefined}
+          onPointerDown={(e) => {
+            const [x, y] = toLocal(e);
+            start(e, { mode: 'move', key: it.key, sx: x, sy: y, part: it.box, flip: it.flip });
+          }}
+        />
+      ))}
+      {!!problems?.length && <path d={pathOf(problems)} fillRule="evenodd" className="fe-problem" />}
+      {ink && ink.length > 1 && (
+        <>
+          <path d={pathOf([ink], pen === 'fill')} className={`fe-ink ${pen}`} style={pen === 'line' ? { strokeWidth: LINE_WIDTH } : undefined} />
+          {ghost && (
+            <path d={pathOf([mirrorX(ink)], pen === 'fill')} className={`fe-ink ghost ${pen}`} style={pen === 'line' ? { strokeWidth: LINE_WIDTH } : undefined} />
+          )}
+        </>
+      )}
+      {msg && (
+        <text x={VB.x + VB.w / 2} y={VB.y + VB.h - 6} className="fe-msg" textAnchor="middle">
+          {msg}
+        </text>
+      )}
+      {pen === 'off' && sel && (
         <g transform={`translate(${sel.x},${-sel.y})`}>
           <rect
             x={-sel.w / 2}
@@ -163,7 +268,7 @@ export function FaceEditor() {
           <Handle
             at={corner}
             className="fe-handle"
-            onPointerDown={(e) => start(e, { mode: 'scale', key: selected, part: sel })}
+            onPointerDown={(e) => start(e, { mode: 'scale', key: selected, part: sel, min: selDrawn?.line ? 1 : 4 })}
           />
           <Handle
             at={knob}

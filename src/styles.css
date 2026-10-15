@@ -152,7 +152,11 @@ button.badge:hover { background: var(--panel-3); }
 .preset-icon { font-size: 22px; line-height: 1.1; transition: transform 0.25s var(--ease); }
 .preset-label { font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 
-.tabs { display: flex; border-bottom: 1px solid var(--line); padding: 0 6px; }
+.tabbar { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid var(--line); padding-right: 10px; }
+.tabs { flex: 1; display: flex; padding: 0 6px; }
+/* 戻る・進む：縦線でタブと区切り、枠なしで軽く見せる（押せる大きさは変えない） */
+.history { display: flex; gap: 2px; padding-left: 8px; border-left: 1px solid var(--line); }
+.history .icon-btn { border-color: transparent; background: none; }
 .tabs button {
   flex: 1; background: none; border: none; padding: 10px 0 9px; color: var(--muted); font-weight: 500; position: relative;
 }
@@ -247,6 +251,22 @@ input[type='range']:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(
 @media (pointer: coarse) { .fe-hit { r: 12px; } }
 .fe-handle:hover circle:last-child { stroke-width: 1.4; }
 .fe-wrap { position: relative; }
+/* ペンモード：パーツは触れず、描いている面を塗りで見せる（何が切り抜かれるかが分かるように） */
+.face-editor.pen { cursor: crosshair; }
+.face-editor.pen .fe-part { pointer-events: none; }
+.fe-ink { fill: #ffcf6a66; stroke: #fff; stroke-width: 0.5; stroke-linejoin: round; pointer-events: none; }
+.fe-ink.ghost { fill: #ffcf6a33; stroke: #ffffff88; stroke-dasharray: 1.5 1.5; }
+.fe-msg { fill: #fff; font-size: 5px; font-weight: 600; paint-order: stroke; stroke: #1a1210; stroke-width: 2px; pointer-events: none; }
+.fe-part.line { fill: none; stroke: #ffcf6a; stroke-linecap: round; stroke-linejoin: round; }
+.fe-part.line.selected { stroke: #ffe39a; }
+.fe-problem { fill: #ff3b3b; stroke: #ff3b3b; stroke-width: 1.6; stroke-linejoin: round; opacity: 0.75; pointer-events: none; animation: pulse 0.9s ease-in-out infinite alternate; }
+.fe-ink.line { fill: none; stroke: #ffcf6a99; stroke-linecap: round; stroke-linejoin: round; }
+.fe-ink.ghost.line { stroke: #ffcf6a44; stroke-dasharray: none; }
+.shape-thumb.draw { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.drawn-label { font-weight: 600; }
+/* ペンを使っている間は、PC ではパネルを広げて描く場所を大きくする */
+@media (min-width: 761px) { .app.drawing .layout { grid-template-columns: min(720px, 58vw) 1fr; } }
+.icon-btn[aria-pressed='true'] { border-color: var(--accent); background: var(--accent); color: #1b0f05; }
 .fe-tools { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 4px; }
 .icon-btn {
   width: 32px; height: 32px; display: grid; place-items: center; font-size: 17px; line-height: 1;
@@ -334,6 +354,9 @@ input[type='range']:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(
   .ghost, .badge, .seg button, .chip, .preset, .stem-card, .shape-card, .tabs button, .primary, .modal-actions button,
   .first-hint-close, .sheet-handle, .toggle { min-height: 44px; }
   .icon-btn { width: 44px; height: 44px; }
+  /* 描いている間：道具は展開図の外（下）に出して描く場所を空け、描くのに使わないプリセット列は隠して高さを稼ぐ */
+  .drawing .presets { display: none; }
+  .drawing .fe-tools { position: static; justify-content: flex-end; margin-top: 8px; }
   input[type='range'] { height: 44px; }
   .slider { gap: 0; }
   .sheet-handle span { width: 44px; height: 5px; border-radius: 3px; background: var(--line); }
