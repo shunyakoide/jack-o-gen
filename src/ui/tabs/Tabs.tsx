@@ -65,10 +65,6 @@ function FaceTab() {
   const selected = useStore((s) => s.selectedPart);
   const pen = useStore((s) => s.pen);
   const setPen = useStore((s) => s.setPen);
-  const undo = useStore((s) => s.undo);
-  const redo = useStore((s) => s.redo);
-  const canUndo = useStore((s) => s.past.length > 0);
-  const canRedo = useStore((s) => s.future.length > 0);
   const selectPart = useStore((s) => s.selectPart);
   const setPart = useStore((s) => s.setPart);
   const removeDrawn = useStore((s) => s.removeDrawn);
@@ -115,12 +111,6 @@ function FaceTab() {
             aria-label={t('draw')}
           >
             <svg viewBox="0 0 24 24" aria-hidden><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
-          </button>
-          <button className="icon-btn" onClick={undo} disabled={!canUndo} title={`${t('undo')} (⌘Z)`} aria-label={t('undo')}>
-            <svg viewBox="0 0 24 24" aria-hidden><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>
-          </button>
-          <button className="icon-btn" onClick={redo} disabled={!canRedo} title={`${t('redo')} (⇧⌘Z)`} aria-label={t('redo')}>
-            <svg viewBox="0 0 24 24" aria-hidden><path d="m15 14 5-5-5-5" /><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" /></svg>
           </button>
         </div>
       </div>

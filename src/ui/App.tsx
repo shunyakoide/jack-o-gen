@@ -30,6 +30,10 @@ export function App() {
   const setTab = useStore((s) => s.setTab);
   const drawing = useStore((s) => s.pen !== 'off' && s.tab === 'face');
   const [sheet, setSheet] = useState<'half' | 'full' | 'min'>('half');
+  const undo = useStore((s) => s.undo);
+  const redo = useStore((s) => s.redo);
+  const canUndo = useStore((s) => s.past.length > 0);
+  const canRedo = useStore((s) => s.future.length > 0);
   const toast = useStore((s) => s.toast);
   const showToast = useStore((s) => s.showToast);
   const [hint, setHint] = useState(FIRST_VISIT);
@@ -68,6 +72,13 @@ export function App() {
           Jack-o-Gen
         </h1>
         <div className="topbar-actions">
+          {/* 戻る・進むはどのタブでも、スクロールしても届くように上のバーに置く */}
+          <button className="icon-btn" onClick={undo} disabled={!canUndo} title={`${t('undo')} (⌘Z)`} aria-label={t('undo')}>
+            <svg viewBox="0 0 24 24" aria-hidden><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>
+          </button>
+          <button className="icon-btn" onClick={redo} disabled={!canRedo} title={`${t('redo')} (⇧⌘Z)`} aria-label={t('redo')}>
+            <svg viewBox="0 0 24 24" aria-hidden><path d="m15 14 5-5-5-5" /><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" /></svg>
+          </button>
           <CheckBadge />
           <button className="ghost lang" onClick={() => setLang(lang === 'en' ? 'ja' : 'en')} title="Language / 言語">
             {lang === 'en' ? '日本語' : 'EN'}
