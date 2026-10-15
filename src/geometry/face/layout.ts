@@ -193,7 +193,9 @@ export function layoutFace(
     keys.push(key);
   }
   face.drawn.forEach((d, i) => {
-    const part = scope.keep(new CrossSection(drawnPolygons(d, opts.scale).map(ccw), 'NonZero'));
+    let part = scope.keep(new CrossSection(drawnPolygons(d, opts.scale).map(ccw), 'NonZero'));
+    // 手描きの面は外形だけを使う（自己交差でできた内側の抜けが島＋ブリッジにならないように）
+    if (!d.line) part = scope.keep(new CrossSection((part.toPolygons() as Pt[][]).filter((q) => signedArea(q) > 0), 'NonZero'));
     if (part.isEmpty()) return;
     parts.push(part);
     keys.push(drawnKey(i));

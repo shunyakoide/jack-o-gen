@@ -42,7 +42,8 @@ function rdp(pts: Pt[], tol: number): Pt[] {
 /**
  * なぞった点列 → 閉じてなめらかにし、MAX_DRAW_PTS 点以下に間引いた多角形。小さすぎれば null
  */
-export function finishStroke(raw: Pt[]): Pt[] | null {
+export function finishStroke(rawIn: Pt[]): Pt[] | null {
+  const raw = trimOvershoot(rawIn);
   if (raw.length < 3) return null;
   const xs = raw.map((p) => p[0]);
   const ys = raw.map((p) => p[1]);
@@ -58,6 +59,27 @@ export function finishStroke(raw: Pt[]): Pt[] | null {
     const out = [...rdp(smooth.slice(0, far + 1), tol).slice(0, -1), ...rdp([...smooth.slice(far), smooth[0]], tol).slice(0, -1)];
     if (out.length <= MAX_DRAW_PTS) return out;
   }
+}
+
+/**
+ * 終わりが始点を通り過ぎた分を切る（重なった尻尾が逆向きの小さな輪になり、島や細い穴になるため）。
+ * 前半の点と後半の点が CLOSE_GAP 以内に戻ってくる組のうち、輪がいちばん長くなる所で切る。戻ってこなければそのまま
+ */
+const CLOSE_GAP = 1.5;
+function trimOvershoot(raw: Pt[]): Pt[] {
+  const n = raw.length;
+  const half = Math.floor(n / 2);
+  let best: [number, number] | null = null;
+  for (let i = 0; i < half; i++) {
+    for (let j = n - 1; j >= half; j--) {
+      if (best && j - i <= best[1] - best[0]) break;
+      if (Math.hypot(raw[i][0] - raw[j][0], raw[i][1] - raw[j][1]) < CLOSE_GAP) {
+        best = [i, j];
+        break;
+      }
+    }
+  }
+  return best ? raw.slice(best[0], best[1] + 1) : raw;
 }
 
 /** なぞった点列 → なめらかな開いた折れ線。短すぎれば null */

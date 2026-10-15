@@ -107,4 +107,19 @@ describe('描いた形を本体に切り抜く', async () => {
     expect(Math.min(...xs)).toBeLessThan(27.5);
     expect(Math.max(...xs)).toBeGreaterThan(26.5);
   });
+
+  it('終わりが始点を通り過ぎた手描きの円でも、島・細い穴・小穴ができない', () => {
+    // 以前は重なった尻尾が逆向きの小さな輪になり、島（＋ブリッジの棒）や細い穴の警告になっていた
+    for (const [over, dr] of [[5, -3], [20, -3], [20, 1], [40, 3], [80, 3]]) {
+      const raw: Pt[] = [];
+      for (let i = 0; i <= 360 + over; i++) {
+        const a = (i / 360) * 2 * Math.PI;
+        const r = 10 + (i > 360 ? ((i - 360) / over) * dr : 0);
+        raw.push([-75 + r * Math.cos(a), 25 + r * Math.sin(a)]);
+      }
+      const q = { ...p, face: { ...p.face, drawn: [toDrawn(finishStroke(raw)!, 0, false)] } };
+      const r = buildPumpkin(wasm, q, 'draft');
+      expect(r.checks.filter((c) => c.level !== 'green' || c.id === 'island').map((c) => c.id), `${over},${dr}`).toEqual([]);
+    }
+  });
 });
