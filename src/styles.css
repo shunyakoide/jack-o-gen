@@ -154,6 +154,9 @@ button.badge:hover { background: var(--panel-3); }
 
 .tabbar { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid var(--line); padding-right: 10px; }
 .tabs { flex: 1; display: flex; padding: 0 6px; }
+/* 戻る・進む：縦線でタブと区切り、枠なしで軽く見せる（押せる大きさは変えない） */
+.history { display: flex; gap: 2px; padding-left: 8px; border-left: 1px solid var(--line); }
+.history .icon-btn { border-color: transparent; background: none; }
 .tabs button {
   flex: 1; background: none; border: none; padding: 10px 0 9px; color: var(--muted); font-weight: 500; position: relative;
 }

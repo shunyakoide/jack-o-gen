@@ -77,6 +77,7 @@ export const en: Record<string, string> = {
   'part.drawn': 'drawn shape',
   undo: 'Undo',
   redo: 'Redo',
+  history: 'History',
   faceEditor: 'Face layout editor',
   faceMap: 'Unwrapped front',
   faceSide: 'side →',

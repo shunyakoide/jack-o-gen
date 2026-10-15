@@ -77,6 +77,7 @@ export const ja: Record<string, string> = {
   'part.drawn': '描いた形',
   undo: '元に戻す',
   redo: 'やり直す',
+  history: '操作の履歴',
   faceEditor: '顔パーツの配置エディタ',
   faceMap: '展開図（正面）',
   faceSide: '側面→',
