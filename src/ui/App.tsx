@@ -72,13 +72,6 @@ export function App() {
           Jack-o-Gen
         </h1>
         <div className="topbar-actions">
-          {/* 戻る・進むはどのタブでも、スクロールしても届くように上のバーに置く */}
-          <button className="icon-btn" onClick={undo} disabled={!canUndo} title={`${t('undo')} (⌘Z)`} aria-label={t('undo')}>
-            <svg viewBox="0 0 24 24" aria-hidden><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>
-          </button>
-          <button className="icon-btn" onClick={redo} disabled={!canRedo} title={`${t('redo')} (⇧⌘Z)`} aria-label={t('redo')}>
-            <svg viewBox="0 0 24 24" aria-hidden><path d="m15 14 5-5-5-5" /><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" /></svg>
-          </button>
           <CheckBadge />
           <button className="ghost lang" onClick={() => setLang(lang === 'en' ? 'ja' : 'en')} title="Language / 言語">
             {lang === 'en' ? '日本語' : 'EN'}
@@ -106,24 +99,33 @@ export function App() {
             </p>
           )}
           <PresetCards />
-          <nav className="tabs" role="tablist">
-            {TABS.map((id) => (
-              <button
-                key={id}
-                role="tab"
-                id={`tab-${id}`}
-                aria-controls="tab-panel"
-                aria-selected={tab === id}
-                className={tab === id ? 'on' : ''}
-                onClick={() => {
-                  setTab(id);
-                  if (sheet === 'min') setSheet('half');
-                }}
-              >
-                {t(`tab.${id}`)}
-              </button>
-            ))}
-          </nav>
+          <div className="tabbar">
+            <nav className="tabs" role="tablist">
+              {TABS.map((id) => (
+                <button
+                  key={id}
+                  role="tab"
+                  id={`tab-${id}`}
+                  aria-controls="tab-panel"
+                  aria-selected={tab === id}
+                  className={tab === id ? 'on' : ''}
+                  onClick={() => {
+                    setTab(id);
+                    if (sheet === 'min') setSheet('half');
+                  }}
+                >
+                  {t(`tab.${id}`)}
+                </button>
+              ))}
+            </nav>
+            {/* 戻る・進むは操作するパネルの上、スクロールしないタブの行に置く */}
+            <button className="icon-btn" onClick={undo} disabled={!canUndo} title={`${t('undo')} (⌘Z)`} aria-label={t('undo')}>
+              <svg viewBox="0 0 24 24" aria-hidden><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>
+            </button>
+            <button className="icon-btn" onClick={redo} disabled={!canRedo} title={`${t('redo')} (⇧⌘Z)`} aria-label={t('redo')}>
+              <svg viewBox="0 0 24 24" aria-hidden><path d="m15 14 5-5-5-5" /><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" /></svg>
+            </button>
+          </div>
           <div className="tab-body" role="tabpanel" id="tab-panel" aria-labelledby={`tab-${tab}`}>
             <TabContent tab={tab} />
           </div>
