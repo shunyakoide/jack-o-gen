@@ -52,6 +52,9 @@ interface State {
   applyPreset: (id: string) => void;
   applyStem: (id: string) => void;
   setPreview: (r: BuildResult | null, error?: string | null) => void;
+  /** 画面下に少しだけ出す通知（翻訳キー） */
+  toast: string | null;
+  showToast: (key: string) => void;
   setBuilding: (b: boolean) => void;
 }
 
@@ -86,6 +89,8 @@ function track(s: State, params: Params): Pick<State, 'params' | 'past' | 'futur
 
 /** プリセットを選んでも変えない設定（大きさと印刷まわり） */
 const KEEP_ON_PRESET = ['diameter', 'led', 'wall', 'floor', 'bridge', 'arch', 'stemAttach'] as const;
+
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
 export const useStore = create<State>((set) => ({
   params: initialParams(),
@@ -157,10 +162,14 @@ export const useStore = create<State>((set) => ({
     if (!card) return;
     const seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0;
     const next = card.make(seed);
+    // 顔を描いていたら、プリセットは本体の形だけを変えて描いた顔は残す
+    const keepFace = useStore.getState().params.face.drawn.length > 0;
     set((s) => {
       const kept = Object.fromEntries(KEEP_ON_PRESET.map((k) => [k, s.params[k]]));
-      return { ...track(s, { ...next, ...kept }), activePreset: id };
+      const params = { ...next, ...kept, ...(keepFace && { face: s.params.face }) };
+      return { ...track(s, keepFace ? { ...params, face: clampFace(params) } : params), activePreset: id };
     });
+    if (keepFace) useStore.getState().showToast('presetKeptFace');
   },
   applyStem: (id) => {
     const st = STEM_STYLES.find((s) => s.id === id);
@@ -168,4 +177,10 @@ export const useStore = create<State>((set) => ({
   },
   setPreview: (preview, error = null) => set({ preview, error }),
   setBuilding: (building) => set({ building }),
+  toast: null,
+  showToast: (toast) => {
+    set({ toast });
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => set({ toast: null }), 2000);
+  },
 }));

@@ -37,4 +37,20 @@ describe('描いた形', () => {
     s().undo();
     expect(s().params.face.drawn.length).toBe(8);
   });
+
+  it('描いた形があればプリセットは本体の形だけを変え、顔は残す', () => {
+    useStore.setState({ params: defaultParams(), past: [], future: [] });
+    const s = useStore.getState;
+    s().applyPreset('ghost');
+    const ghostFace = s().params.face;
+    s().addDrawn(shape);
+    s().applyPreset('flat');
+    expect(s().params.face.drawn.length).toBe(1);
+    expect(s().params.face.eyeL).toEqual(ghostFace.eyeL);
+    expect(s().toast).toBe('presetKeptFace');
+    s().undo();
+    s().undo();
+    s().applyPreset('flat');
+    expect(s().params.face.drawn).toEqual([]);
+  });
 });

@@ -66,6 +66,7 @@ export const en: Record<string, string> = {
   drawTooSmall: 'Too small to become a hole',
   drawHintLine: 'Draw a line — it is cut as a 4 mm groove (brows, scars, stitches). Esc to stop drawing',
   drawFull: 'Up to 8 drawn shapes',
+  presetKeptFace: 'Shape changed — your drawn face is kept',
   drawDone: 'Done',
   drawOwn: 'Draw',
   drawnShape: 'Drawn shape {n}/{max}',

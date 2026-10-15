@@ -30,7 +30,8 @@ export function App() {
   const setTab = useStore((s) => s.setTab);
   const drawing = useStore((s) => s.pen !== 'off' && s.tab === 'face');
   const [sheet, setSheet] = useState<'half' | 'full' | 'min'>('half');
-  const [toast, setToast] = useState<string | null>(null);
+  const toast = useStore((s) => s.toast);
+  const showToast = useStore((s) => s.showToast);
   const [hint, setHint] = useState(FIRST_VISIT);
 
   // ⌘Z / Ctrl+Z で元に戻す、⇧ 付きか Ctrl+Y でやり直す（数値入力欄は自前の取り消しに任せる）
@@ -53,11 +54,10 @@ export function App() {
     const url = shareUrl(useStore.getState().params);
     try {
       await navigator.clipboard.writeText(url);
-      setToast(t('copied'));
+      showToast('copied');
     } catch {
       window.prompt(t('copyPrompt'), url);
     }
-    setTimeout(() => setToast(null), 2000);
   };
 
   return (
@@ -124,7 +124,7 @@ export function App() {
       </main>
       {/* ライブリージョンは常に置いておき、中身の出し入れで読み上げさせる */}
       <div role="status" aria-live="polite">
-        {toast && <div className="toast">{toast}</div>}
+        {toast && <div className="toast">{t(toast)}</div>}
       </div>
     </div>
   );

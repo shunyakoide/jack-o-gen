@@ -66,6 +66,7 @@ export const ja: Record<string, string> = {
   drawTooSmall: '小さすぎて穴になりません',
   drawHintLine: '線を描くと、幅 4 mm の溝として切り抜かれます（眉・傷・縫い目など）。Esc で終了',
   drawFull: '描ける形は 8 個までです',
+  presetKeptFace: '形だけ変えました（描いた顔はそのまま）',
   drawDone: '完了',
   drawOwn: '自分で描く',
   drawnShape: '描いた形 {n}/{max}',
