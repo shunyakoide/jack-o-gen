@@ -47,6 +47,16 @@ describe('ヘタ差し込み式', () => {
     }
   });
 
+  it('座ぐりはヘタの形（外接円より小さく、角の間に本体の肉が残る）', () => {
+    const p: Params = { ...defaultParams(), stemAttach: 'peg' };
+    const r = cachedBuild(wasm, p, 'preview');
+    const rf = stemSeatRadius(p);
+    const zSeat = r.stem!.seatZ;
+    // 中心のピンを除いた輪
+    const ring = wasm.Manifold.cylinder(1, rf, rf, 48).subtract(wasm.Manifold.cylinder(1, 0.8 * rf, 0.8 * rf, 48)).translate([0, 0, zSeat + 0.2]);
+    expect(solidOf(wasm, r.positions, r.indices).intersect(ring).volume()).toBeGreaterThan(1);
+  });
+
   it('一体式ではヘタ単体を返さない', () => {
     expect(cachedBuild(wasm, defaultParams(), 'draft').stem).toBeUndefined();
   });

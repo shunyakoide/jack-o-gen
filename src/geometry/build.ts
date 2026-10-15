@@ -190,12 +190,19 @@ function addPeg(c: Ctx, p: Params, body: Body, stemM: Manifold, result: Manifold
   const seg = fine ? 128 : 48;
   // 座面：ヘタの足元の範囲で外形がいちばん低い高さ。ランタンでは内天井から壁厚ぶん上までに留める
   let zSeat = Infinity;
+  let zRim = -Infinity;
   const bp = body.positions;
   for (let v = 0; v < bp.length / 3; v++) {
-    if (bp[v * 3 + 2] > info.zCenter && Math.hypot(bp[v * 3], bp[v * 3 + 1]) <= rf) zSeat = Math.min(zSeat, bp[v * 3 + 2]);
+    if (bp[v * 3 + 2] <= info.zCenter) continue;
+    const r = Math.hypot(bp[v * 3], bp[v * 3 + 1]);
+    if (r <= rf) zSeat = Math.min(zSeat, bp[v * 3 + 2]);
+    if (r <= rf + 2) zRim = Math.max(zRim, bp[v * 3 + 2]);
   }
   zSeat = Math.max(zSeat, zCeil + p.wall);
-  const seat = scope.keep(scope.keep(scope.keep(wasm.Manifold.cylinder(info.zTop + 10, rf, rf, seg)).translate([0, 0, zSeat])).asOriginal());
+  // 座ぐりはヘタの形：本体に埋まる高さのヘタを真上から見た外形を seatGap だけ太らせて押し出す（丸より回り止めになる）
+  const foot = scope.keep(scope.keep(stemM.trimByPlane([0, 0, 1], zSeat)).trimByPlane([0, 0, -1], -zRim)).project();
+  const outline = scope.keep(scope.keep(scope.keep(foot).offset(FIT.seatGap, 'Round', 2, seg)).simplify(0.01));
+  const seat = scope.keep(scope.keep(scope.keep(outline.extrude(zRim - zSeat + 10)).translate([0, 0, zSeat])).asOriginal());
   const peg = stemPin(p, info.zTop, zSeat);
   const { rp, hp } = peg;
   // ピンは座面より 0.5 mm 下から生やして本体と確実に重ねる。先端は面取りして差し込みやすく。
