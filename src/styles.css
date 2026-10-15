@@ -350,6 +350,9 @@ input[type='range']:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(
   .ghost, .badge, .seg button, .chip, .preset, .stem-card, .shape-card, .tabs button, .primary, .modal-actions button,
   .first-hint-close, .sheet-handle, .toggle { min-height: 44px; }
   .icon-btn { width: 44px; height: 44px; }
+  /* 描いている間：道具は展開図の外（下）に出して描く場所を空け、描くのに使わないプリセット列は隠して高さを稼ぐ */
+  .drawing .presets { display: none; }
+  .drawing .fe-tools { position: static; justify-content: flex-end; margin-top: 8px; }
   input[type='range'] { height: 44px; }
   .slider { gap: 0; }
   .sheet-handle span { width: 44px; height: 5px; border-radius: 3px; background: var(--line); }
