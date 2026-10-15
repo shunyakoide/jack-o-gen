@@ -76,7 +76,7 @@ function ccw(poly: Pt[]): Pt[] {
 
 /**
  * 穴の天井（穴の内側が下にある、傾き 45° 未満の辺）を 45° の山形に置き換える。
- * 長い天井は幅 maxSpan ごとの連続した山（ノコギリ屋根）にする。
+ * 幅 2·maxSpan を超える長い天井は、幅 maxSpan ごとの連続した山（ノコギリ屋根）にする。
  */
 export function archTents(contours: Pt[][], minSpan: number, maxSpan: number): Pt[][] {
   const tents: Pt[][] = [];
@@ -116,7 +116,8 @@ export function archTents(contours: Pt[][], minSpan: number, maxSpan: number): P
       const xB = run[run.length - 1][0];
       const span = xA - xB;
       if (span < minSpan) continue;
-      const pieces = Math.ceil(span / maxSpan);
+      // maxSpan の 2 倍までは 1 つの尖頭アーチにする（丸い穴の上が小さな山の連なりで王冠のようにならないように）
+      const pieces = span <= 2 * maxSpan ? 1 : Math.ceil(span / maxSpan);
       const yAt = (x: number) => {
         for (let k = 0; k < run.length - 1; k++) {
           const [x0, y0] = run[k];

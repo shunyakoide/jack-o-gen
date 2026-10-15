@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { crossesCenter, finishStroke, MAX_DRAW_PTS, mirrorX } from '../src/geometry/face/draw';
+import { archTents } from '../src/geometry/face/layout';
 import type { Pt } from '../src/geometry/face/presets';
 
 // 手ぶれ付きで円をなぞった点列
@@ -28,6 +29,16 @@ describe('手描きの線', () => {
     expect(crossesCenter(eye)).toBe(false);
     expect(crossesCenter(finishStroke(wobblyCircle(0, 8))!)).toBe(true);
     expect(Math.min(...mirrorX(eye).map((p) => p[0]))).toBeLessThan(-27);
+  });
+});
+
+describe('穴の天井のアーチ', () => {
+  const ring = (r: number, n = 48): Pt[] => Array.from({ length: n }, (_, i): Pt => [r * Math.cos((2 * Math.PI * i) / n), r * Math.sin((2 * Math.PI * i) / n)]);
+  it('丸い穴の上は 1 つの尖頭アーチ（小さな山が並ぶ王冠にしない）', () => {
+    expect(archTents([ring(10)], 2.5, 8).length).toBe(1);
+  });
+  it('幅の広い天井（口など）は幅 8 mm ごとの山に分ける', () => {
+    expect(archTents([[[-20, -5], [20, -5], [20, 5], [-20, 5]]], 2.5, 8).length).toBe(5);
   });
 });
 
