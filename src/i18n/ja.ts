@@ -1,5 +1,6 @@
 export const ja: Record<string, string> = {
   share: '共有',
+  toDownload: 'ダウンロード',
   copied: 'URLをコピーしました',
   copyPrompt: 'このURLをコピーしてください',
   panel: 'パラメータ',
