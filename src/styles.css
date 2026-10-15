@@ -250,10 +250,18 @@ input[type='range']:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(
 /* ペンモード：パーツは触れず、描いている面を塗りで見せる（何が切り抜かれるかが分かるように） */
 .face-editor.pen { cursor: crosshair; }
 .face-editor.pen .fe-part { pointer-events: none; }
-.fe-part.drawn { pointer-events: none; }
 .fe-ink { fill: #ffcf6a66; stroke: #fff; stroke-width: 0.5; stroke-linejoin: round; pointer-events: none; }
 .fe-ink.ghost { fill: #ffcf6a33; stroke: #ffffff88; stroke-dasharray: 1.5 1.5; }
 .fe-msg { fill: #fff; font-size: 5px; font-weight: 600; paint-order: stroke; stroke: #1a1210; stroke-width: 2px; pointer-events: none; }
+.fe-part.line { fill: none; stroke: #ffcf6a; stroke-linecap: round; stroke-linejoin: round; }
+.fe-part.line.selected { stroke: #ffe39a; }
+.fe-problem { fill: #ff3b3b; stroke: #ff3b3b; stroke-width: 1.6; stroke-linejoin: round; opacity: 0.75; pointer-events: none; animation: pulse 0.9s ease-in-out infinite alternate; }
+.fe-ink.line { fill: none; stroke: #ffcf6a99; stroke-linecap: round; stroke-linejoin: round; }
+.fe-ink.ghost.line { stroke: #ffcf6a44; stroke-dasharray: none; }
+.shape-thumb.draw { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.drawn-label { font-weight: 600; }
+/* ペンを使っている間は、PC ではパネルを広げて描く場所を大きくする */
+@media (min-width: 761px) { .app.drawing .layout { grid-template-columns: min(720px, 58vw) 1fr; } }
 .icon-btn[aria-pressed='true'] { border-color: var(--accent); background: var(--accent); color: #1b0f05; }
 .fe-tools { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 4px; }
 .icon-btn {

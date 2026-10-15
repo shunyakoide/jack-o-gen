@@ -49,7 +49,7 @@ export function CheckList({ problems = false }: { problems?: boolean }) {
                 {t(`check.${c.id}.${c.detail}`, c.vars)}
                 {!!c.parts?.length && (
                   <span className="check-parts">
-                    {[...new Set(c.parts.map((k) => (symmetric && k.startsWith('eye') ? 'part.eyes' : `part.${k}`)))].map((k) => t(k)).join('・')}
+                    {[...new Set(c.parts.map((k) => (k[0] === 'd' ? 'part.drawn' : symmetric && k.startsWith('eye') ? 'part.eyes' : `part.${k}`)))].map((k) => t(k)).join('・')}
                   </span>
                 )}
               </div>

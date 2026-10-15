@@ -28,6 +28,7 @@ export function App() {
   const setLang = useLang((s) => s.setLang);
   const tab = useStore((s) => s.tab);
   const setTab = useStore((s) => s.setTab);
+  const drawing = useStore((s) => s.pen !== 'off' && s.tab === 'face');
   const [sheet, setSheet] = useState<'half' | 'full' | 'min'>('half');
   const [toast, setToast] = useState<string | null>(null);
   const [hint, setHint] = useState(FIRST_VISIT);
@@ -60,7 +61,7 @@ export function App() {
   };
 
   return (
-    <div className={`app sheet-${sheet}`}>
+    <div className={`app sheet-${sheet}${drawing ? ' drawing' : ''}`}>
       <header className="topbar">
         <h1>
           <img className="brand-mark" src="/brand/pumpkin-small.png" width="96" height="64" alt="" />

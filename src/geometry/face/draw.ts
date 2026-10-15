@@ -1,5 +1,6 @@
 // 手描きの線を、閉じたなめらかな多角形にする（展開図 mm 座標）。
 
+import type { DrawnPart, PartBox } from '../../model/params';
 import type { Pt } from './presets';
 
 /** 描いた形の点数の上限（URL の長さと CSG の重さのため） */
@@ -7,14 +8,18 @@ export const MAX_DRAW_PTS = 48;
 /** 幅・高さがこれ未満の形は穴として成り立たないので捨てる [mm] */
 export const MIN_DRAW_SIZE = 4;
 
-/** 閉じた多角形の角を Chaikin 法で丸める */
-function chaikin(poly: Pt[]): Pt[] {
-  const out: Pt[] = [];
-  for (let i = 0; i < poly.length; i++) {
+/** 線ペンの太さ [mm、直径 120 基準]。最小の穴 2 mm に、穴の内面での縮みと印刷の誤差の余裕を足した */
+export const LINE_WIDTH = 4;
+
+/** 角を Chaikin 法で丸める（open なら両端は動かさない） */
+function chaikin(poly: Pt[], open = false): Pt[] {
+  const out: Pt[] = open ? [poly[0]] : [];
+  for (let i = 0; i < (open ? poly.length - 1 : poly.length); i++) {
     const [x0, y0] = poly[i];
     const [x1, y1] = poly[(i + 1) % poly.length];
     out.push([0.75 * x0 + 0.25 * x1, 0.75 * y0 + 0.25 * y1], [0.25 * x0 + 0.75 * x1, 0.25 * y0 + 0.75 * y1]);
   }
+  if (open) out.push(poly[poly.length - 1]);
   return out;
 }
 
@@ -53,6 +58,75 @@ export function finishStroke(raw: Pt[]): Pt[] | null {
     const out = [...rdp(smooth.slice(0, far + 1), tol).slice(0, -1), ...rdp([...smooth.slice(far), smooth[0]], tol).slice(0, -1)];
     if (out.length <= MAX_DRAW_PTS) return out;
   }
+}
+
+/** なぞった点列 → なめらかな開いた折れ線。短すぎれば null */
+export function finishLine(raw: Pt[]): Pt[] | null {
+  if (raw.length < 2) return null;
+  let len = 0;
+  for (let i = 1; i < raw.length; i++) len += Math.hypot(raw[i][0] - raw[i - 1][0], raw[i][1] - raw[i - 1][1]);
+  if (len < MIN_DRAW_SIZE) return null;
+  const smooth = chaikin(chaikin(raw, true), true);
+  for (let tol = 0.3; ; tol *= 1.4) {
+    const out = rdp(smooth, tol);
+    if (out.length <= MAX_DRAW_PTS) return out;
+  }
+}
+
+/** 展開図 mm の点列 → 外接枠で正規化した描いた形 */
+export function toDrawn(poly: Pt[], line: number, mirror: boolean): DrawnPart {
+  const xs = poly.map((p) => p[0]);
+  const ys = poly.map((p) => p[1]);
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  // まっすぐな線は幅か高さがほぼ 0 になるので、正規化で割り切れるよう 1 mm を下限にする
+  const w = Math.max(1, x1 - x0);
+  const h = Math.max(1, y1 - y0);
+  const x = (x0 + x1) / 2;
+  const y = (y0 + y1) / 2;
+  const q = (v: number) => Math.round(v * 127) / 127;
+  return { x, y, w, h, rot: 0, mirror, line, pts: poly.map(([px, py]): Pt => [q((px - x) / (w / 2)), q((py - y) / (h / 2))]) };
+}
+
+/** 単位正方形の点を枠に置く（展開図 mm） */
+export function placeBox(box: PartBox, pts: Pt[]): Pt[] {
+  const a = (box.rot * Math.PI) / 180;
+  const ca = Math.cos(a);
+  const sa = Math.sin(a);
+  return pts.map(([u, v]): Pt => {
+    const x0 = u * box.w * 0.5;
+    const y0 = v * box.h * 0.5;
+    return [box.x + x0 * ca - y0 * sa, box.y + x0 * sa + y0 * ca];
+  });
+}
+
+/** 描いた形の点列（展開図 mm）。鏡像があれば 2 本 */
+export function placeDrawn(d: DrawnPart): Pt[][] {
+  const p = placeBox(d, d.pts);
+  return d.mirror ? [p, mirrorX(p)] : [p];
+}
+
+/** 線を、各辺の長方形と各頂点の多角形の重なりで太らせる（NonZero で塗れば和になる） */
+function thicken(line: Pt[], width: number): Pt[][] {
+  const r = width / 2;
+  const out: Pt[][] = [];
+  for (const [cx, cy] of line) {
+    out.push(Array.from({ length: 12 }, (_, k): Pt => [cx + r * Math.cos((k * Math.PI) / 6), cy + r * Math.sin((k * Math.PI) / 6)]));
+  }
+  for (let i = 1; i < line.length; i++) {
+    const [ax, ay] = line[i - 1];
+    const [bx, by] = line[i];
+    const l = Math.hypot(bx - ax, by - ay) || 1;
+    const nx = (-(by - ay) / l) * r;
+    const ny = ((bx - ax) / l) * r;
+    out.push([[ax + nx, ay + ny], [ax - nx, ay - ny], [bx - nx, by - ny], [bx + nx, by + ny]]);
+  }
+  return out;
+}
+
+/** 描いた形の切り抜き多角形（向きはそろえていない）。scale は展開図 mm → 実寸 mm */
+export function drawnPolygons(d: DrawnPart, scale: number): Pt[][] {
+  const polys = placeDrawn(d).flatMap((p) => (d.line > 0 ? thicken(p, d.line) : [p]));
+  return polys.map((p) => p.map(([x, y]): Pt => [x * scale, y * scale]));
 }
 
 /** 左右対称モードで反対側に鏡像を出すか（中心線をまたがない形だけ） */

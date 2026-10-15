@@ -4,8 +4,10 @@ import {
   clampNum,
   defaultFace,
   defaultParams,
+  MAX_DRAWN,
   NUM_DEFS,
   PART_KEYS,
+  type DrawnPart,
   type FacePart,
   type FaceParams,
   type Params,
@@ -33,6 +35,35 @@ function decodePart(s: string | undefined, def: FacePart): FacePart {
   };
 }
 
+// 描いた形：x,y,w,h,rot,鏡像,線の太さ,点（int8 の組を base64url）。形どうしは '*'（URL でエスケープされず、数値の小数点とも重ならない）で区切る
+const MAX_PTS = 48;
+
+function encodeDrawn(d: DrawnPart): string {
+  const bytes = Uint8Array.from(d.pts.flat(), (v) => Math.round(Math.max(-1, Math.min(1, v)) * 127) & 0xff);
+  const b64 = btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return [r1(d.x), r1(d.y), r1(d.w), r1(d.h), r1(d.rot), d.mirror ? 1 : 0, r1(d.line), b64].join(',');
+}
+
+function decodeDrawn(s: string): DrawnPart | null {
+  const f = s.split(',');
+  if (f.length !== 8) return null;
+  const n = f.slice(0, 7).map(Number);
+  if (!n.every(Number.isFinite)) return null;
+  let bin: string;
+  try {
+    bin = atob(f[7].replace(/-/g, '+').replace(/_/g, '/'));
+  } catch {
+    return null;
+  }
+  const v = Array.from(bin, (c) => ((c.charCodeAt(0) << 24) >> 24) / 127);
+  const pts: [number, number][] = [];
+  for (let i = 0; i + 1 < v.length && pts.length < MAX_PTS; i += 2) pts.push([v[i], v[i + 1]]);
+  const line = Math.min(20, Math.max(0, n[6]));
+  if (pts.length < (line > 0 ? 2 : 3)) return null;
+  const c = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
+  return { x: c(n[0], -120, 120), y: c(n[1], -90, 90), w: c(n[2], 1, 120), h: c(n[3], 1, 120), rot: c(n[4], -180, 180), mirror: n[5] === 1, line, pts };
+}
+
 const encodeFace = (f: FaceParams) => [f.symmetric ? '1' : '0', ...PART_KEYS.map((k) => encodePart(f[k]))].join('_');
 const DEFAULT_FACE = encodeFace(defaultFace());
 
@@ -43,6 +74,7 @@ export function encodeParams(p: Params): string {
   if (p.stemAttach === 'peg') q.set('a', 'p');
   const f = encodeFace(p.face);
   if (f !== DEFAULT_FACE) q.set('f', f);
+  if (p.face.drawn.length) q.set('d', p.face.drawn.map(encodeDrawn).join('*'));
   return q.toString();
 }
 
@@ -62,6 +94,8 @@ export function decodeParams(search: string): Params | null {
     PART_KEYS.forEach((k, i) => (face[k] = decodePart(parts[i + 1], p.face[k])));
     p.face = face;
   }
+  const d = q.get('d');
+  if (d) p.face = { ...p.face, drawn: d.split('*').slice(0, MAX_DRAWN).map(decodeDrawn).filter((x): x is DrawnPart => !!x) };
   p.face = clampFace(p);
   return p;
 }

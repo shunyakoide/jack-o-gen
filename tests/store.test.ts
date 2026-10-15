@@ -18,3 +18,23 @@ describe('プリセット', () => {
     expect([useStore.getState().params.diameter, useStore.getState().params.wall]).toEqual([400, 4]);
   });
 });
+
+describe('描いた形', () => {
+  const shape = { x: 30, y: 10, w: 10, h: 10, rot: 0, mirror: false, line: 0, pts: [[-1, -1], [1, -1], [0, 1]] as [number, number][] };
+
+  it('足すと選ばれ、上限で止まり、消すと隣を選ぶ。undo で戻る', () => {
+    useStore.setState({ params: defaultParams(), past: [], future: [] });
+    const s = useStore.getState;
+    expect(s().addDrawn(shape)).toBe(true);
+    expect(s().selectedPart).toBe('d0');
+    for (let i = 1; i < 8; i++) s().addDrawn({ ...shape, x: 30 + i });
+    expect(s().addDrawn(shape)).toBe(false);
+    expect(s().params.face.drawn.length).toBe(8);
+    s().setPart('d7', { x: -20, preset: 'round' });
+    expect(s().params.face.drawn[7].x).toBe(-20);
+    s().removeDrawn(7);
+    expect(s().selectedPart).toBe('d6');
+    s().undo();
+    expect(s().params.face.drawn.length).toBe(8);
+  });
+});

@@ -6,11 +6,16 @@ import {
   applySymmetry,
   clampNum,
   defaultParams,
+  drawnIndex,
+  drawnKey,
+  MAX_DRAWN,
   NUM_DEF_BY_KEY,
+  type DrawnPart,
   type FacePart,
   type NumParams,
   type Params,
   type PartKey,
+  type SelKey,
   type StemAttach,
   type TabId,
 } from '../model/params';
@@ -21,7 +26,9 @@ import { decodeParams } from './url';
 interface State {
   params: Params;
   tab: TabId;
-  selectedPart: PartKey;
+  selectedPart: SelKey;
+  /** 顔エディタのペン：面（なぞって囲う）か線か */
+  pen: 'off' | 'fill' | 'line';
   preview: BuildResult | null;
   building: boolean;
   error: string | null;
@@ -35,14 +42,20 @@ interface State {
   setNum: (key: keyof NumParams, v: number) => void;
   setStemAttach: (a: StemAttach) => void;
   setSymmetric: (on: boolean) => void;
-  setPart: (key: PartKey, patch: Partial<FacePart>) => void;
-  selectPart: (key: PartKey) => void;
+  setPart: (key: SelKey, patch: PartPatch) => void;
+  /** 描いた形を足して選ぶ。上限に達していれば false */
+  addDrawn: (d: DrawnPart) => boolean;
+  removeDrawn: (i: number) => void;
+  selectPart: (key: SelKey) => void;
+  setPen: (pen: State['pen']) => void;
   setTab: (t: TabId) => void;
   applyPreset: (id: string) => void;
   applyStem: (id: string) => void;
   setPreview: (r: BuildResult | null, error?: string | null) => void;
   setBuilding: (b: boolean) => void;
 }
+
+export type PartPatch = Partial<FacePart> & { mirror?: boolean };
 
 function initialParams(): Params {
   if (typeof location !== 'undefined') {
@@ -78,6 +91,7 @@ export const useStore = create<State>((set) => ({
   params: initialParams(),
   tab: 'shape',
   selectedPart: 'eyeL',
+  pen: 'off',
   preview: null,
   building: false,
   error: null,
@@ -104,19 +118,39 @@ export const useStore = create<State>((set) => ({
   setPart: (key, patch) =>
     set((s) => {
       let face = s.params.face;
-      // 対称モードでは右目の操作を左目へ鏡映して反映する
-      if (face.symmetric && key === 'eyeR') {
+      const di = drawnIndex(key);
+      if (di >= 0) {
+        if (!face.drawn[di]) return {};
+        const { preset: _, ...box } = patch;
+        face = { ...face, drawn: face.drawn.map((d, i) => (i === di ? { ...d, ...box } : d)) };
+      } else if (face.symmetric && key === 'eyeR') {
+        // 対称モードでは右目の操作を左目へ鏡映して反映する
         const m: Partial<FacePart> = { ...patch };
         if (patch.x !== undefined) m.x = -patch.x;
         if (patch.rot !== undefined) m.rot = -patch.rot;
         face = { ...face, eyeL: { ...face.eyeL, ...m } };
       } else {
-        face = { ...face, [key]: { ...face[key], ...patch } };
+        face = { ...face, [key]: { ...face[key as PartKey], ...patch } };
       }
       const params = { ...s.params, face: applySymmetry(face) };
       return { ...track(s, { ...params, face: clampFace(params) }), activePreset: null };
     }),
+  addDrawn: (d) => {
+    if (useStore.getState().params.face.drawn.length >= MAX_DRAWN) return false;
+    set((s) => {
+      const params = { ...s.params, face: { ...s.params.face, drawn: [...s.params.face.drawn, d] } };
+      return { ...track(s, { ...params, face: clampFace(params) }), selectedPart: drawnKey(params.face.drawn.length - 1), activePreset: null };
+    });
+    return true;
+  },
+  removeDrawn: (i) =>
+    set((s) => {
+      const drawn = s.params.face.drawn.filter((_, j) => j !== i);
+      const selectedPart = drawn.length ? drawnKey(Math.min(i, drawn.length - 1)) : 'eyeL';
+      return { ...track(s, { ...s.params, face: { ...s.params.face, drawn } }), selectedPart, activePreset: null };
+    }),
   selectPart: (selectedPart) => set({ selectedPart }),
+  setPen: (pen) => set({ pen }),
   setTab: (tab) => set({ tab }),
   applyPreset: (id) => {
     const card = PRESET_CARDS.find((c) => c.id === id);

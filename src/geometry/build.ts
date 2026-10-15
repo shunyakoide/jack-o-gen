@@ -37,6 +37,8 @@ export interface BuildResult {
   checks: CheckItem[];
   level: CheckLevel;
   stats: BuildStats;
+  /** 顔の細い穴・細い連結部の領域（展開図 mm）。エディタで赤く塗る */
+  faceProblems: [number, number][][];
   /** 差し込み式のときだけ：ヘタ単体（本体に差した位置の座標）。seatZ は平らな底面の z */
   stem?: { positions: Float32Array; indices: Uint32Array; seatZ: number };
 }
@@ -304,7 +306,7 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
       face: face.check,
     });
     stats.ms = performance.now() - t0;
-    return { positions, indices, groups, checks: items, level, stats, ...(stemPart && { stem: stemPart }) };
+    return { positions, indices, groups, checks: items, level, stats, faceProblems: face.check.problems, ...(stemPart && { stem: stemPart }) };
   } finally {
     scope.dispose();
   }

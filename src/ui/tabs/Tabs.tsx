@@ -1,7 +1,6 @@
-import { useCallback, useState } from 'react';
 import { findPreset, presetsFor } from '../../geometry/face/presets';
 import { useT } from '../../i18n';
-import { PART_KEYS, PART_KIND, type PartKind, type TabId } from '../../model/params';
+import { drawnIndex, MAX_DRAWN, PART_KEYS, PART_KIND, type PartKey, type PartKind, type TabId } from '../../model/params';
 import { useStore } from '../../state/store';
 import { matchStem, STEM_STYLES } from '../../state/stems';
 import { FaceEditor } from '../face-editor/FaceEditor';
@@ -64,29 +63,54 @@ function FaceTab() {
   const t = useT();
   const face = useStore((s) => s.params.face);
   const selected = useStore((s) => s.selectedPart);
+  const pen = useStore((s) => s.pen);
+  const setPen = useStore((s) => s.setPen);
   const undo = useStore((s) => s.undo);
   const redo = useStore((s) => s.redo);
   const canUndo = useStore((s) => s.past.length > 0);
   const canRedo = useStore((s) => s.future.length > 0);
   const selectPart = useStore((s) => s.selectPart);
   const setPart = useStore((s) => s.setPart);
+  const removeDrawn = useStore((s) => s.removeDrawn);
   const setSymmetric = useStore((s) => s.setSymmetric);
-  const [pen, setPen] = useState(false);
-  const exitPen = useCallback(() => setPen(false), []);
-  const part = face[selected];
-  const kind = PART_KIND[selected];
-  const current = (face.symmetric && selected === 'eyeR' ? face.eyeL : part).preset;
+  const di = drawnIndex(selected);
+  const drawn = di >= 0 ? face.drawn[di] : undefined;
+  // 描いた形が undo で消えていたら左目を選んでいるものとして扱う
+  const key: PartKey = di >= 0 ? 'eyeL' : (selected as PartKey);
+  const part = drawn ?? face[key];
+  const kind = PART_KIND[key];
+  const current = drawn ? null : (face.symmetric && key === 'eyeR' ? face.eyeL : face[key]).preset;
   // 大きさは縦横比を保ったまま幅で指定する
-  const setSize = (w: number) => setPart(selected, { w, h: Math.round(((part.h * w) / part.w) * 2) / 2 });
+  const setSize = (w: number) => setPart(drawn ? selected : key, { w, h: Math.round(((part.h * w) / part.w) * 2) / 2 });
   return (
     <>
       <div className="fe-wrap">
-        <FaceEditor pen={pen} onPenExit={exitPen} />
+        <FaceEditor />
         <div className="fe-tools">
+          {/* 面／線の切り替えは描く場所のすぐ横に置く（スマホではパネルの下が画面外になる） */}
+          {pen !== 'off' &&
+            (['fill', 'line'] as const).map((m) => (
+              <button
+                key={m}
+                className="icon-btn"
+                onClick={() => setPen(m)}
+                aria-pressed={pen === m}
+                title={t(`pen.${m}`)}
+                aria-label={t(`pen.${m}`)}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden>
+                  {m === 'fill' ? (
+                    <path d="M7 5c4-2 11 0 12 5s-3 9-8 9-8-3-8-7 1-6 4-7Z" fill="currentColor" />
+                  ) : (
+                    <path d="M3 16c3-6 6-6 9-2s6 4 9-2" />
+                  )}
+                </svg>
+              </button>
+            ))}
           <button
             className="icon-btn"
-            onClick={() => setPen(!pen)}
-            aria-pressed={pen}
+            onClick={() => setPen(pen === 'off' ? 'fill' : 'off')}
+            aria-pressed={pen !== 'off'}
             title={`${t('draw')} (Esc)`}
             aria-label={t('draw')}
           >
@@ -100,45 +124,88 @@ function FaceTab() {
           </button>
         </div>
       </div>
-      <div className="row">
-        <div className="seg">
-          {/* 左右対称のときは両目を 1 つのボタンにまとめる */}
-          {(face.symmetric ? (['eyeL', 'nose', 'mouth'] as const) : PART_KEYS).map((k) => {
-            const on = k === selected || (face.symmetric && k === 'eyeL' && selected === 'eyeR');
-            return (
-              <button key={k} aria-pressed={on} className={on ? 'on' : ''} onClick={() => selectPart(k)}>
-                {t(face.symmetric && k === 'eyeL' ? 'part.eyes' : `part.${k}`)}
+      {pen !== 'off' ? (
+        <>
+          <div className="row">
+            <label className="toggle">
+              <input type="checkbox" checked={face.symmetric} onChange={(e) => setSymmetric(e.target.checked)} />
+              {t('symmetric')}
+            </label>
+            <button className="ghost" onClick={() => setPen('off')}>
+              {t('drawDone')}
+            </button>
+          </div>
+          <p className="hint">{t(pen === 'line' ? 'drawHintLine' : 'drawHint')}</p>
+        </>
+      ) : (
+        <>
+          <div className="row">
+            <div className="seg">
+              {/* 左右対称のときは両目を 1 つのボタンにまとめる */}
+              {(face.symmetric ? (['eyeL', 'nose', 'mouth'] as const) : PART_KEYS).map((k) => {
+                const on = k === selected || (face.symmetric && k === 'eyeL' && selected === 'eyeR');
+                return (
+                  <button key={k} aria-pressed={on} className={on ? 'on' : ''} onClick={() => selectPart(k)}>
+                    {t(face.symmetric && k === 'eyeL' ? 'part.eyes' : `part.${k}`)}
+                  </button>
+                );
+              })}
+            </div>
+            <label className="toggle">
+              <input type="checkbox" checked={face.symmetric} onChange={(e) => setSymmetric(e.target.checked)} />
+              {t('symmetric')}
+            </label>
+          </div>
+          {drawn ? (
+            <div className="row">
+              <span className="drawn-label">{t('drawnShape', { n: di + 1, max: MAX_DRAWN })}</span>
+              <label className="toggle">
+                <input type="checkbox" checked={drawn.mirror} onChange={(e) => setPart(selected, { mirror: e.target.checked })} />
+                {t('drawnMirror')}
+              </label>
+              <button className="ghost" onClick={() => removeDrawn(di)}>
+                {t('drawnDelete')}
               </button>
-            );
-          })}
-        </div>
-        <label className="toggle">
-          <input type="checkbox" checked={face.symmetric} onChange={(e) => setSymmetric(e.target.checked)} />
-          {t('symmetric')}
-        </label>
-      </div>
-      <div className="shape-grid">
-        {presetsFor(kind).map((p) => (
-          <button
-            key={p.id}
-            className={`shape-card ${current === p.id ? 'on' : ''}`}
-            aria-pressed={current === p.id}
-            onClick={() => setPart(selected, { preset: p.id })}
-          >
-            <ShapeThumb kind={kind} id={p.id} w={part.w} h={part.h} />
-            <span>{t(`${kind}.${p.id}`)}</span>
-          </button>
-        ))}
-      </div>
-      {current !== 'none' && (
-        <label className="slider" {...gestureProps}>
-          <span className="slider-head">
-            <span>{t('part.size')}</span>
-          </span>
-          <input type="range" min={6} max={100} step={0.5} value={part.w} onChange={(e) => setSize(Number(e.target.value))} />
-        </label>
+            </div>
+          ) : (
+            <div className="shape-grid">
+              {presetsFor(kind).map((p) => (
+                <button
+                  key={p.id}
+                  className={`shape-card ${current === p.id ? 'on' : ''}`}
+                  aria-pressed={current === p.id}
+                  onClick={() => setPart(key, { preset: p.id })}
+                >
+                  <ShapeThumb kind={kind} id={p.id} w={part.w} h={part.h} />
+                  <span>{t(`${kind}.${p.id}`)}</span>
+                </button>
+              ))}
+              {/* 自分で描く：このパーツを消してペンにする（描いた形が代わりになる） */}
+              <button
+                className="shape-card"
+                onClick={() => {
+                  setPart(key, { preset: 'none' });
+                  setPen('fill');
+                }}
+              >
+                <svg className="shape-thumb draw" viewBox="0 0 24 18" aria-hidden>
+                  <path d="M12 16h8" /><path d="M15.5 2.5a2.1 2.1 0 0 1 3 3L7 17l-4 1 1-4Z" />
+                </svg>
+                <span>{t('drawOwn')}</span>
+              </button>
+            </div>
+          )}
+          {(drawn || current !== 'none') && (
+            <label className="slider" {...gestureProps}>
+              <span className="slider-head">
+                <span>{t('part.size')}</span>
+              </span>
+              <input type="range" min={drawn ? 2 : 6} max={100} step={0.5} value={part.w} onChange={(e) => setSize(Number(e.target.value))} />
+            </label>
+          )}
+          <p className="hint">{t('faceHint')}</p>
+        </>
       )}
-      <p className="hint">{t(pen ? 'drawHint' : 'faceHint')}</p>
     </>
   );
 }
