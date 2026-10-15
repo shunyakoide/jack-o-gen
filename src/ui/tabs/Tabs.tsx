@@ -1,3 +1,4 @@
+import { useCallback, useState } from 'react';
 import { findPreset, presetsFor } from '../../geometry/face/presets';
 import { useT } from '../../i18n';
 import { PART_KEYS, PART_KIND, type PartKind, type TabId } from '../../model/params';
@@ -70,6 +71,8 @@ function FaceTab() {
   const selectPart = useStore((s) => s.selectPart);
   const setPart = useStore((s) => s.setPart);
   const setSymmetric = useStore((s) => s.setSymmetric);
+  const [pen, setPen] = useState(false);
+  const exitPen = useCallback(() => setPen(false), []);
   const part = face[selected];
   const kind = PART_KIND[selected];
   const current = (face.symmetric && selected === 'eyeR' ? face.eyeL : part).preset;
@@ -78,8 +81,17 @@ function FaceTab() {
   return (
     <>
       <div className="fe-wrap">
-        <FaceEditor />
+        <FaceEditor pen={pen} onPenExit={exitPen} />
         <div className="fe-tools">
+          <button
+            className="icon-btn"
+            onClick={() => setPen(!pen)}
+            aria-pressed={pen}
+            title={`${t('draw')} (Esc)`}
+            aria-label={t('draw')}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+          </button>
           <button className="icon-btn" onClick={undo} disabled={!canUndo} title={`${t('undo')} (⌘Z)`} aria-label={t('undo')}>
             <svg viewBox="0 0 24 24" aria-hidden><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>
           </button>
@@ -126,7 +138,7 @@ function FaceTab() {
           <input type="range" min={6} max={100} step={0.5} value={part.w} onChange={(e) => setSize(Number(e.target.value))} />
         </label>
       )}
-      <p className="hint">{t('faceHint')}</p>
+      <p className="hint">{t(pen ? 'drawHint' : 'faceHint')}</p>
     </>
   );
 }

@@ -1,7 +1,9 @@
 // 顔パーツを 2D 展開図上でドラッグして位置・大きさ・回転を調整するエディタ。
 // 座標は直径 120mm 基準の mm（x：赤道に沿った弧長、y：赤道からの弧長、上が +）。
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { crossesCenter, finishStroke, mirrorX } from '../../geometry/face/draw';
 import { partPolygons } from '../../geometry/face/layout';
+import type { Pt } from '../../geometry/face/presets';
 import { applySymmetry, PART_KEYS, type FacePart, type PartKey } from '../../model/params';
 import { useStore } from '../../state/store';
 import { useT } from '../../i18n';
@@ -18,7 +20,7 @@ function pathOf(polys: [number, number][][]): string {
   return polys.map((p) => 'M' + p.map(([x, y]) => `${x.toFixed(2)},${(-y).toFixed(2)}`).join('L') + 'Z').join('');
 }
 
-export function FaceEditor() {
+export function FaceEditor({ pen, onPenExit }: { pen: boolean; onPenExit: () => void }) {
   const face = useStore((s) => s.params.face);
   const ribs = useStore((s) => s.params.ribs);
   const twist = useStore((s) => s.params.twist);
@@ -30,6 +32,25 @@ export function FaceEditor() {
   const t = useT();
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
+  // ペンで描いている途中の点列と、描き終えた形（Phase 0：まだ 3D には反映しない）
+  // 点列はイベントごとに ref へ足す（state だと描画の合間に来たイベントが古い値を見る）。ink は表示用の写し
+  const inkRef = useRef<Pt[] | null>(null);
+  const [ink, setInk] = useState<Pt[] | null>(null);
+  const [sketches, setSketches] = useState<Pt[][]>([]);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!pen) return;
+    const onEsc = (e: KeyboardEvent) => e.key === 'Escape' && onPenExit();
+    window.addEventListener('keydown', onEsc);
+    return () => window.removeEventListener('keydown', onEsc);
+  }, [pen, onPenExit]);
+
+  useEffect(() => {
+    if (!msg) return;
+    const id = setTimeout(() => setMsg(null), 2200);
+    return () => clearTimeout(id);
+  }, [msg]);
 
   const shown = applySymmetry(face);
   const R = rEqReal ? (rEqReal * 120) / diameter : 58;
@@ -55,7 +76,7 @@ export function FaceEditor() {
     return lines;
   }, [ribs, twist, R]);
 
-  const toLocal = (e: React.PointerEvent): [number, number] => {
+  const toLocal = (e: { clientX: number; clientY: number }): [number, number] => {
     const svg = svgRef.current!;
     const pt = svg.createSVGPoint();
     pt.x = e.clientX;
@@ -72,7 +93,37 @@ export function FaceEditor() {
     setDrag(d);
   };
 
+  const startInk = (e: React.PointerEvent) => {
+    if (!pen || e.button > 0) return;
+    svgRef.current!.setPointerCapture(e.pointerId);
+    inkRef.current = [toLocal(e)];
+    setInk(inkRef.current);
+  };
+
+  const endInk = () => {
+    const raw = inkRef.current;
+    if (!raw) return;
+    inkRef.current = null;
+    setInk(null);
+    const poly = finishStroke(raw);
+    if (!poly) return setMsg(t('drawTooSmall'));
+    setSketches((s) => [...s, poly, ...(face.symmetric && !crossesCenter(poly) ? [mirrorX(poly)] : [])]);
+  };
+
   const onMove = (e: React.PointerEvent) => {
+    const raw = inkRef.current;
+    if (raw) {
+      // 速くなぞっても角が欠けないよう、間引かれたイベントも拾う
+      const evs = e.nativeEvent.getCoalescedEvents?.() ?? [];
+      const n = raw.length;
+      for (const ev of evs.length ? evs : [e.nativeEvent]) {
+        const q = toLocal(ev);
+        const last = raw[raw.length - 1];
+        if (Math.hypot(q[0] - last[0], q[1] - last[1]) > 0.5) raw.push(q);
+      }
+      if (raw.length > n) setInk([...raw]);
+      return;
+    }
     if (!drag) return;
     const [x, y] = toLocal(e);
     const p = drag.part;
@@ -112,13 +163,21 @@ export function FaceEditor() {
   return (
     <svg
       ref={svgRef}
-      className={`face-editor ${drag ? 'dragging' : ''}`}
+      className={`face-editor ${drag ? 'dragging' : ''} ${pen ? 'pen' : ''}`}
       tabIndex={0}
       onKeyDown={onKey}
       viewBox={`${VB.x} ${VB.y} ${VB.w} ${VB.h}`}
+      onPointerDown={startInk}
       onPointerMove={onMove}
-      onPointerUp={() => setDrag(null)}
-      onPointerCancel={() => setDrag(null)}
+      onPointerUp={() => {
+        setDrag(null);
+        endInk();
+      }}
+      onPointerCancel={() => {
+        setDrag(null);
+        inkRef.current = null;
+        setInk(null);
+      }}
       role="application"
       aria-label={t('faceEditor')}
     >
@@ -149,7 +208,21 @@ export function FaceEditor() {
           />
         );
       })}
-      {sel.preset !== 'none' && (
+      {sketches.map((poly, i) => (
+        <path key={i} d={pathOf([poly])} className="fe-part drawn" />
+      ))}
+      {ink && ink.length > 1 && (
+        <>
+          <path d={pathOf([ink])} className="fe-ink" />
+          {face.symmetric && !crossesCenter(ink) && <path d={pathOf([mirrorX(ink)])} className="fe-ink ghost" />}
+        </>
+      )}
+      {msg && (
+        <text x={VB.x + VB.w / 2} y={VB.y + VB.h - 6} className="fe-msg" textAnchor="middle">
+          {msg}
+        </text>
+      )}
+      {!pen && sel.preset !== 'none' && (
         <g transform={`translate(${sel.x},${-sel.y})`}>
           <rect
             x={-sel.w / 2}

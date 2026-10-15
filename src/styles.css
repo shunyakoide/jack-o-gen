@@ -247,6 +247,14 @@ input[type='range']:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(
 @media (pointer: coarse) { .fe-hit { r: 12px; } }
 .fe-handle:hover circle:last-child { stroke-width: 1.4; }
 .fe-wrap { position: relative; }
+/* ペンモード：パーツは触れず、描いている面を塗りで見せる（何が切り抜かれるかが分かるように） */
+.face-editor.pen { cursor: crosshair; }
+.face-editor.pen .fe-part { pointer-events: none; }
+.fe-part.drawn { pointer-events: none; }
+.fe-ink { fill: #ffcf6a66; stroke: #fff; stroke-width: 0.5; stroke-linejoin: round; pointer-events: none; }
+.fe-ink.ghost { fill: #ffcf6a33; stroke: #ffffff88; stroke-dasharray: 1.5 1.5; }
+.fe-msg { fill: #fff; font-size: 5px; font-weight: 600; paint-order: stroke; stroke: #1a1210; stroke-width: 2px; pointer-events: none; }
+.icon-btn[aria-pressed='true'] { border-color: var(--accent); background: var(--accent); color: #1b0f05; }
 .fe-tools { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 4px; }
 .icon-btn {
   width: 32px; height: 32px; display: grid; place-items: center; font-size: 17px; line-height: 1;
