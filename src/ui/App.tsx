@@ -64,6 +64,17 @@ export function App() {
     }
   };
 
+  // ゴールのダウンロードはどのタブからも 1 押しで出力タブへ（ヘタの付け方・肉厚を確認してから保存させる）
+  const toDownload = () => {
+    setTab('print');
+    if (sheet === 'min') setSheet('half');
+    requestAnimationFrame(() => {
+      const btn = document.querySelector<HTMLButtonElement>('.export > .primary');
+      btn?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      btn?.focus({ preventScroll: true });
+    });
+  };
+
   return (
     <div className={`app sheet-${sheet}${drawing ? ' drawing' : ''}`}>
       <header className="topbar">
@@ -78,6 +89,10 @@ export function App() {
           </button>
           <button className="ghost" onClick={share}>
             {t('share')}
+          </button>
+          <button className="primary cta" onClick={toDownload} aria-label={t('toDownload')}>
+            <svg viewBox="0 0 24 24" aria-hidden><path d="M12 4v11" /><path d="m7 10 5 5 5-5" /><path d="M5 20h14" /></svg>
+            <span className="cta-label">{t('toDownload')}</span>
           </button>
         </div>
       </header>

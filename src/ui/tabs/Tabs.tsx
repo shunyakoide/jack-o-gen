@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { findPreset, presetsFor } from '../../geometry/face/presets';
 import { useT } from '../../i18n';
 import { drawnIndex, MAX_DRAWN, PART_KEYS, PART_KIND, type PartKey, type PartKind, type TabId } from '../../model/params';
@@ -190,7 +191,14 @@ function FaceTab() {
               <span className="slider-head">
                 <span>{t('part.size')}</span>
               </span>
-              <input type="range" min={drawn ? 2 : 6} max={100} step={0.5} value={part.w} onChange={(e) => setSize(Number(e.target.value))} />
+              <input
+                type="range"
+                min={drawn ? 2 : 6}
+                max={100}
+                step={0.5}
+                value={part.w}
+                style={{ '--p': `${((part.w - (drawn ? 2 : 6)) / (100 - (drawn ? 2 : 6))) * 100}%` } as CSSProperties}
+                onChange={(e) => setSize(Number(e.target.value))} />
             </label>
           )}
           <p className="hint">{t('faceHint')}</p>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { ledHole } from '../geometry/body';
 import { NUM_DEF_BY_KEY, type NumParams } from '../model/params';
 import { useStore } from '../state/store';
@@ -47,7 +47,7 @@ export function ParamSlider({ k }: { k: keyof NumParams }) {
             else if (e.key === 'Escape') setDraft(null);
           }}
         />
-        {def.unit && <span className="unit">{def.unit}</span>}
+        <span className="unit">{def.unit}</span>
       </span>
       <input
         type="range"
@@ -55,6 +55,7 @@ export function ParamSlider({ k }: { k: keyof NumParams }) {
         max={def.max}
         step={def.step}
         value={value}
+        style={{ '--p': `${Math.min(100, ((value - def.min) / (def.max - def.min)) * 100)}%` } as CSSProperties}
         onChange={(e) => setNum(k, Number(e.target.value))}
       />
     </label>

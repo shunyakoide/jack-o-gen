@@ -1,5 +1,6 @@
 export const en: Record<string, string> = {
   share: 'Share',
+  toDownload: 'Download',
   copied: 'Link copied',
   copyPrompt: 'Copy this link',
   panel: 'Parameters',

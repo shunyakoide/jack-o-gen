@@ -7,11 +7,17 @@ export function CheckBadge() {
   const t = useT();
   const preview = useStore((s) => s.preview);
   const setTab = useStore((s) => s.setTab);
-  if (!preview) return <span className="badge pending">{t('checking')}</span>;
+  if (!preview)
+    return (
+      <span className="badge pending">
+        <span className="dot" aria-hidden />
+        <span className="badge-label">{t('checking')}</span>
+      </span>
+    );
   return (
     <button className={`badge ${preview.level}`} onClick={() => setTab('print')} title={t('seeChecks')}>
       <span className="dot" aria-hidden />
-      {t(`level.${preview.level}`)}
+      <span className="badge-label">{t(`level.${preview.level}`)}</span>
     </button>
   );
 }
