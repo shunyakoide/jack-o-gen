@@ -48,6 +48,19 @@ describe('callWorker', () => {
     expect(FakeWorker.count).toBe(1);
   });
 
+  it('待ち終わって実行が始まれば、自分のタイムアウトは効く', async () => {
+    const { callWorker, WorkerTimeout } = await import('../src/worker/client');
+    const exportJob = deferred<string>();
+    void callWorker(() => exportJob.promise, 120_000);
+    const caught = callWorker(() => new Promise<never>(() => {}), 30_000).catch((e) => e);
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    exportJob.resolve('stl');
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    expect(await caught).toBeInstanceOf(WorkerTimeout);
+  });
+
   it('自分の実行がタイムアウトしたら Worker を止め、次の呼び出しは新しい Worker で動く', async () => {
     const { callWorker, WorkerTimeout } = await import('../src/worker/client');
     const hung = callWorker(() => new Promise<never>(() => {}), 30_000);

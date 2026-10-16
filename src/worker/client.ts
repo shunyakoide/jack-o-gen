@@ -4,7 +4,9 @@ import type { GeometryApi } from './geometry.worker';
 /** 書き出しの待ち時間を超えたときのエラー（UI で専用の文言を出す） */
 export class WorkerTimeout extends Error {}
 
-let current: { worker: Worker; remote: Comlink.Remote<GeometryApi>; dead: Promise<never>; kill: (e: Error) => void; pending: number } | null = null;
+let current: { worker: Worker; remote: Comlink.Remote<GeometryApi>; dead: Promise<never>; kill: (e: Error) => void } | null = null;
+// Worker は 1 本で順に処理するので、呼び出しもここで一列に並べる（待ち時間をタイムアウトに数えない）
+let queue: Promise<unknown> = Promise.resolve();
 
 function start() {
   const worker = new Worker(new URL('./geometry.worker.ts', import.meta.url), { type: 'module' });
@@ -15,7 +17,6 @@ function start() {
     worker,
     remote: Comlink.wrap<GeometryApi>(worker),
     dead,
-    pending: 0,
     // Worker が死ぬと comlink の呼び出しは永遠に返らないので、待っている呼び出しをまとめて失敗させる
     kill: (e: Error) => {
       worker.terminate();
@@ -28,21 +29,15 @@ function start() {
   return w;
 }
 
-/** Worker 呼び出し。クラッシュ・タイムアウト時は reject し、次の呼び出しで新しい Worker を起動する */
+/** Worker 呼び出し。前の呼び出しが終わってから実行し、クラッシュ・タイムアウト時は reject して次は新しい Worker を起動する */
 export function callWorker<T>(f: (api: Comlink.Remote<GeometryApi>) => Promise<T>, timeoutMs: number): Promise<T> {
-  const w = (current ??= start());
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  w.pending++;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => {
-      const err = new WorkerTimeout(`Timed out after ${timeoutMs / 1000} s`);
-      // 他の呼び出し（書き出しなど）の後ろで待っているだけかもしれないので、自分だけのときに限り Worker を止める
-      if (w.pending > 1) reject(err);
-      else w.kill(err);
-    }, timeoutMs);
-  });
-  return Promise.race([f(w.remote), w.dead, timeout]).finally(() => {
-    clearTimeout(timer);
-    w.pending--;
-  });
+  const run = () => {
+    const w = (current ??= start());
+    const job = f(w.remote);
+    const timer = setTimeout(() => w.kill(new WorkerTimeout(`Timed out after ${timeoutMs / 1000} s`)), timeoutMs);
+    return Promise.race([job, w.dead]).finally(() => clearTimeout(timer));
+  };
+  const p = queue.then(run, run);
+  queue = p.catch(() => {});
+  return p;
 }
