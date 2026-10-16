@@ -33,7 +33,6 @@ interface State {
   building: boolean;
   error: string | null;
   activePreset: string | null;
-  /** プリセット適用直後：ビルド結果がベッドに収まらなければ直径を縮める */
   /** 元に戻す / やり直す用のパラメータ履歴 */
   past: Params[];
   future: Params[];
