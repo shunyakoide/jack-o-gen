@@ -1,5 +1,7 @@
 export const en: Record<string, string> = {
   share: 'Share',
+  reset: 'Reset',
+  resetConfirm: 'Start over from the default pumpkin? Your current shape and face will be cleared (you can undo this).',
   toDownload: 'Download',
   copied: 'Link copied',
   copyPrompt: 'Copy this link',

@@ -1,5 +1,7 @@
 export const ja: Record<string, string> = {
   share: '共有',
+  reset: 'リセット',
+  resetConfirm: '最初のかぼちゃに戻しますか？今の形や顔は消えます（元に戻すで取り消せます）。',
   toDownload: 'ダウンロード',
   copied: 'URLをコピーしました',
   copyPrompt: 'このURLをコピーしてください',

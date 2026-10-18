@@ -54,6 +54,10 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  const reset = () => {
+    if (window.confirm(t('resetConfirm'))) useStore.getState().reset();
+  };
+
   const share = async () => {
     const url = shareUrl(useStore.getState().params);
     try {
@@ -86,6 +90,9 @@ export function App() {
           <CheckBadge />
           <button className="ghost lang" onClick={() => setLang(lang === 'en' ? 'ja' : 'en')} title="Language / 言語">
             {lang === 'en' ? '日本語' : 'EN'}
+          </button>
+          <button className="ghost" onClick={reset}>
+            {t('reset')}
           </button>
           <button className="ghost" onClick={share}>
             {t('share')}
