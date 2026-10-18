@@ -54,3 +54,20 @@ describe('描いた形', () => {
     expect(s().params.face.drawn).toEqual([]);
   });
 });
+
+describe('リセット', () => {
+  it('すべて初期値に戻し、undo 1 回で元に戻る', () => {
+    useStore.setState({ params: defaultParams(), past: [], future: [] });
+    const s = useStore.getState;
+    s().applyPreset('ghost');
+    s().setNum('diameter', 200);
+    s().selectPart('mouth');
+    s().setPen('fill');
+    const before = s().params;
+    s().reset();
+    expect(s().params).toEqual(defaultParams());
+    expect([s().selectedPart, s().pen, s().activePreset]).toEqual(['eyeL', 'off', null]);
+    s().undo();
+    expect(s().params).toBe(before);
+  });
+});

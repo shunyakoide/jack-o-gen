@@ -50,6 +50,8 @@ interface State {
   setTab: (t: TabId) => void;
   applyPreset: (id: string) => void;
   applyStem: (id: string) => void;
+  /** すべてを最初の状態に戻す（元に戻すで取り消せる 1 手） */
+  reset: () => void;
   setPreview: (r: BuildResult | null, error?: string | null) => void;
   /** 画面下に少しだけ出す通知（翻訳キー） */
   toast: string | null;
@@ -174,6 +176,11 @@ export const useStore = create<State>((set) => ({
     const st = STEM_STYLES.find((s) => s.id === id);
     if (st) set((s) => ({ ...track(s, { ...s.params, ...st.values }), activePreset: null }));
   },
+  reset: () =>
+    set((s) => {
+      endGesture();
+      return { ...track(s, defaultParams()), tab: 'shape', selectedPart: 'eyeL', pen: 'off', activePreset: null };
+    }),
   setPreview: (preview, error = null) => set({ preview, error }),
   setBuilding: (building) => set({ building }),
   toast: null,
