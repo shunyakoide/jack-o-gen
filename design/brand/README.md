@@ -38,6 +38,6 @@ OG 生成指示の要点: 選定済みパンプキンの形と片側が上がっ
 
 - [Open Graph protocol](https://ogp.me/)
 - [Vite HTML transform hook](https://vite.dev/guide/api-plugin.html#transformindexhtml)
-- [Cloudflare Pages build environment](https://developers.cloudflare.com/pages/configuration/build-configuration/)
+- [Vite env files](https://vite.dev/guide/env-and-mode.html#env-files)
 
-公開 URL は未定。`SITE_URL` をビルド時に使用する（未設定時は OG 画像だけ Cloudflare Pages の `CF_PAGES_URL` を使い、canonical は出さない）。
+公開 URL は `https://jack-o-gen.shunyakoide.com`。`.env.production` の `SITE_URL` をビルド時に使用する（未設定時は OG 画像を相対 URL で参照し、canonical は出さない）。
