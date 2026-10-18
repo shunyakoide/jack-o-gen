@@ -193,6 +193,7 @@ export function layoutFace(
     parts.push(part);
     keys.push(key);
   }
+  const presetCount = parts.length;
   face.drawn.forEach((d, i) => {
     let part = scope.keep(new CrossSection(drawnPolygons(d, opts.scale).map(ccw), 'NonZero'));
     // 手描きの面は外形だけを使う（自己交差でできた内側の抜けが島＋ブリッジにならないように）
@@ -207,8 +208,10 @@ export function layoutFace(
   if (!parts.length) return { cs: null, check: empty };
   let cs = scope.keep(CrossSection.union(parts));
 
-  if (opts.arch && !cs.isEmpty()) {
-    const tents = archTents(cs.toPolygons() as Pt[][], 2.5, 8);
+  // 尖頭アーチはプリセットの穴だけに付ける（手描きの形は描いたとおりに抜く。天井が要るなら自分で描く）
+  if (opts.arch && presetCount) {
+    const presets = scope.keep(CrossSection.union(parts.slice(0, presetCount)));
+    const tents = archTents(presets.toPolygons() as Pt[][], 2.5, 8);
     if (tents.length) cs = scope.keep(cs.add(scope.keep(new CrossSection(tents, 'NonZero'))));
   }
 

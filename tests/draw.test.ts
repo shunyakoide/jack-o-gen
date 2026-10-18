@@ -106,6 +106,17 @@ describe('描いた形を本体に切り抜く', async () => {
     expect(r.faceProblems).toEqual([]);
   });
 
+  it('手描きの形には尖頭アーチを足さない（上辺がギザギザにならない）', () => {
+    const box = toDrawn([[-10, -20], [10, -20], [10, -10], [-10, -10]], 0, false);
+    const none = { ...p.face.mouth, preset: 'none' };
+    const face = { ...p.face, eyeL: none, eyeR: none, nose: none, mouth: none, drawn: [box] };
+    const vol = (arch: number) => {
+      const r = buildPumpkin(wasm, { ...p, arch, face }, 'draft');
+      return wasm.Manifold.ofMesh(new wasm.Mesh({ numProp: 3, vertProperties: r.positions, triVerts: r.indices })).volume();
+    };
+    expect(vol(1)).toBeCloseTo(vol(0), 3);
+  });
+
   it('近すぎる 2 つの形は、そのすき間が赤く塗られる', () => {
     const circle = (cx: number): Pt[] => Array.from({ length: 24 }, (_, i): Pt => [cx + 6 * Math.cos((i * Math.PI) / 12), -20 + 6 * Math.sin((i * Math.PI) / 12)]);
     const q = { ...p, face: { ...p.face, drawn: [toDrawn(circle(20), 0, false), toDrawn(circle(34), 0, false)] } };
