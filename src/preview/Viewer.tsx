@@ -33,12 +33,15 @@ function Pumpkin() {
   const geom = usePumpkinGeometry(preview);
   // 差し込み式のヘタは別メッシュ（本体と同じワールド座標）
   const stemGeom = usePumpkinGeometry(preview?.stem);
+  // 色分けの顔パーツも別メッシュ（本体と同じ座標・同じ位置に置く）
+  const faceGeom = usePumpkinGeometry(preview?.face);
   const materials = useMemo(
     () => [
       new THREE.MeshStandardMaterial({ color: '#f07a1a', roughness: 0.55, metalness: 0 }),
       new THREE.MeshStandardMaterial({ color: '#4d7a2a', roughness: 0.8 }),
       new THREE.MeshStandardMaterial({ color: '#f6b25a', roughness: 0.7 }),
       new THREE.MeshStandardMaterial({ color: '#5a2a0a', roughness: 0.9, side: THREE.DoubleSide }),
+      new THREE.MeshStandardMaterial({ color: '#1a1418', roughness: 0.6 }),
     ],
     [],
   );
@@ -53,6 +56,7 @@ function Pumpkin() {
   return (
     <group rotation={[-Math.PI / 2, 0, 0]}>
       <mesh geometry={geom} material={materials} position={layout.body} castShadow receiveShadow />
+      {faceGeom && <mesh geometry={faceGeom} material={materials[4]} position={layout.body} castShadow receiveShadow />}
       {stemGeom && <mesh geometry={stemGeom} material={materials[1]} position={layout.stem ?? layout.body} castShadow receiveShadow />}
     </group>
   );

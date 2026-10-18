@@ -107,6 +107,9 @@ export const en: Record<string, string> = {
   ledNotice: 'PLA softens around 60 °C — never put a real flame inside.',
   'stemAttach.fused': 'Stem attached',
   'stemAttach.peg': 'Stem separate (plug-in)',
+  'faceStyle.cut': 'Cut out face',
+  'faceStyle.inlay': 'Color face (no holes)',
+  inlayHint: 'The face is not cut out. You also get a separate face STL that fills the wall flush with the body. In your slicer, import the body and face files together as one object with multiple parts, then set the face part to black filament (needs a multi-color printer such as AMS).',
   pegHint: 'Downloads a .zip with 2 STL files (body and stem). The stem push-fits onto a pin on top; add a drop of glue if it is loose.',
 
   'level.green': 'Print OK',

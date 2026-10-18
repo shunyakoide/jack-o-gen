@@ -16,6 +16,7 @@ import {
   type Params,
   type PartKey,
   type SelKey,
+  type FaceStyle,
   type StemAttach,
   type TabId,
 } from '../model/params';
@@ -40,6 +41,7 @@ interface State {
   redo: () => void;
   setNum: (key: keyof NumParams, v: number) => void;
   setStemAttach: (a: StemAttach) => void;
+  setFaceStyle: (f: FaceStyle) => void;
   setSymmetric: (on: boolean) => void;
   setPart: (key: SelKey, patch: PartPatch) => void;
   /** 描いた形を足して選ぶ。上限に達していれば false */
@@ -89,7 +91,7 @@ function track(s: State, params: Params): Pick<State, 'params' | 'past' | 'futur
 }
 
 /** プリセットを選んでも変えない設定（大きさと印刷まわり） */
-const KEEP_ON_PRESET = ['diameter', 'led', 'wall', 'floor', 'bridge', 'arch', 'stemAttach'] as const;
+const KEEP_ON_PRESET = ['diameter', 'led', 'wall', 'floor', 'bridge', 'arch', 'stemAttach', 'faceStyle'] as const;
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -119,6 +121,7 @@ export const useStore = create<State>((set) => ({
   setNum: (key, v) =>
     set((s) => ({ ...track(s, { ...s.params, [key]: clampNum(NUM_DEF_BY_KEY[key], v) }), activePreset: null })),
   setStemAttach: (stemAttach) => set((s) => track(s, { ...s.params, stemAttach })),
+  setFaceStyle: (faceStyle) => set((s) => track(s, { ...s.params, faceStyle })),
   setSymmetric: (on) =>
     set((s) => track(s, { ...s.params, face: applySymmetry({ ...s.params.face, symmetric: on }) })),
   setPart: (key, patch) =>

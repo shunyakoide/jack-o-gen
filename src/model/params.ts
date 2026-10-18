@@ -2,6 +2,8 @@
 
 /** ヘタを本体と一体で出すか、別パーツ（本体のピンに差し込む）にするか */
 export type StemAttach = 'fused' | 'peg';
+/** 顔を切り抜くか、穴を開けずに別パーツ（別の色で印刷）にするか */
+export type FaceStyle = 'cut' | 'inlay';
 export type PartKind = 'eye' | 'nose' | 'mouth';
 
 /** 展開図上の配置。顔パーツと描いた形で共通 */
@@ -82,6 +84,7 @@ export interface NumParams {
 
 export interface Params extends NumParams {
   stemAttach: StemAttach;
+  faceStyle: FaceStyle;
   face: FaceParams;
 }
 
@@ -163,7 +166,7 @@ export function defaultFace(): FaceParams {
 export function defaultParams(): Params {
   const p = {} as NumParams;
   for (const d of NUM_DEFS) (p as unknown as Record<string, number>)[d.key] = d.def;
-  return { ...p, stemAttach: 'fused', face: defaultFace() };
+  return { ...p, stemAttach: 'fused', faceStyle: 'cut', face: defaultFace() };
 }
 
 export function clampNum(def: NumDef, v: number): number {

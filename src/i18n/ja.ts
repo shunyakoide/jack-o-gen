@@ -107,6 +107,9 @@ export const ja: Record<string, string> = {
   ledNotice: 'PLAは約60°Cで軟化するため、ろうそくなど火は絶対に入れないでください。',
   'stemAttach.fused': 'ヘタ一体',
   'stemAttach.peg': 'ヘタ別パーツ（差し込み）',
+  'faceStyle.cut': '顔をくり抜く',
+  'faceStyle.inlay': '顔を色分け（穴なし）',
+  inlayHint: '顔は穴を開けず、壁の顔の部分を別の STL（本体と段差なくぴったり重なる）にします。スライサーで本体と顔のファイルを同時に読み込み「1 つのオブジェクトの複数パーツ」にして、顔パーツに黒のフィラメントを割り当ててください（AMS などの多色印刷が必要）。',
   pegHint: 'STL 2 つ（本体・ヘタ）を zip にまとめてダウンロードします。ヘタは頂上のピンに押し込んで固定します。ゆるい場合は接着剤を少量。',
 
   'level.green': '印刷OK',

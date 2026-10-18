@@ -37,6 +37,7 @@ export function ExportPanel() {
   const files: [string, Vec3][] = preview
     ? [[`${name}.stl`, [preview.stats.width, preview.stats.depth, preview.stats.height]]]
     : [];
+  if (preview?.face) files.push([`${name}-face.stl`, partSize(boxOf(preview.face.positions))]);
   if (preview?.stem) files.push([`${name}-stem.stl`, partSize(boxOf(preview.stem.positions), preview.stem.seatZ)]);
 
   const doExport = async () => {

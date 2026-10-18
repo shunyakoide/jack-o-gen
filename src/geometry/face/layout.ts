@@ -276,9 +276,9 @@ export function layoutFace(
   const back = 1 / (k * opts.scale);
   const problems = ((problemCs?.toPolygons() ?? []) as Pt[][]).map((poly) => poly.map(([x, y]): Pt => [x * back, y * back]));
 
-  // 島（穴の内側の材料）を、下向きのブリッジで縁とつなぐ
+  // 島（穴の内側の材料）を、下向きのブリッジで縁とつなぐ（bridge = 0 ならつながない）
   let islands = 0;
-  if (!cs.isEmpty()) {
+  if (opts.bridge > 0 && !cs.isEmpty()) {
     const pieces: CrossSection[] = [];
     for (const comp of cs.decompose()) {
       scope.keep(comp);
