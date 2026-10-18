@@ -36,30 +36,24 @@ npm test           # ジオメトリのテスト（vitest、Node 上で manifold
 npm run build      # 型チェック＋本番ビルド（dist/）
 ```
 
-## Cloudflare Pages へのデプロイ
+## デプロイ
 
-Cloudflare ダッシュボード → Workers & Pages → Pages → 「Git に接続」でこのリポジトリを選び、次のように設定します。
+Cloudflare Workers の静的アセットとして https://jack-o-gen.shunyakoide.com に公開しています（Worker スクリプトなし、`dist/` をそのまま配信）。
 
-| 項目 | 値 |
-|---|---|
-| フレームワーク | なし（Vite） |
-| ビルドコマンド | `npm run build` |
-| 出力ディレクトリ | `dist` |
-| 環境変数 | `NODE_VERSION=22` |
+```bash
+npm run deploy     # ビルドして wrangler deploy
+```
 
-`public/_headers` で WASM の Content-Type とアセットのキャッシュを設定しています。サーバー側の処理はありません。
+ドメインは `wrangler.jsonc` の `routes`、OG 用の公開 URL は `.env.production` の `SITE_URL` で設定しています。フォークする場合は両方を自分のドメインに変えてください。
+`public/_headers` で WASM の Content-Type とアセットのキャッシュを設定しています。
 
 ### ロゴ・共有カード
 
 採用したパンプキンをヘッダーとファビコンに使用しています。画像一覧と元画像は
 [`design/brand/README.md`](design/brand/README.md) にまとめています。
 
-公開ドメインが決まったら、ビルド環境の `SITE_URL` に `https://公開ドメイン` を設定してください。
-ローカルでは `.env.example` を `.env.local` にコピーして設定できます。
-ビルド時に OG 画像・X カード画像の絶対 URL、`og:url`、canonical を HTML に埋め込みます。
-`SITE_URL` が未設定だと `og:url` と canonical は出力しません。Cloudflare Pages の `CF_PAGES_URL` は
-デプロイごとに変わる URL なので、OG 画像の参照先にだけ使います。
-両方未設定のローカル表示では画像を相対 URL で参照し、canonical は出力しません。
+ビルド時に `SITE_URL` から OG 画像・X カード画像の絶対 URL、`og:url`、canonical を HTML に埋め込みます。
+`SITE_URL` が空のときは画像を相対 URL で参照し、`og:url` と canonical は出力しません。
 SNS 上での表示確認は公開後に行ってください。
 
 ## 構成
