@@ -8,6 +8,10 @@ import { toBinaryStl } from '../geometry/stl';
 import { to3mf, type ThreeMfObject } from '../geometry/threemf';
 import type { Params } from '../model/params';
 
+// 3MF のパーツ色（プレビューと同じオレンジ、顔は黒）
+const BODY_COLOR = '#F07A1A';
+const FACE_COLOR = '#000000';
+
 const api = {
   async build(p: Params, quality: Quality): Promise<BuildResult> {
     const wasm = await loadManifold(wasmUrl);
@@ -34,15 +38,15 @@ const api = {
         {
           name: 'jack-o-gen',
           parts: [
-            { name: 'body', positions: r.positions, indices: r.indices, extruder: 1 },
-            { name: 'face', positions: r.face.positions, indices: r.face.indices, extruder: 2 },
+            { name: 'body', positions: r.positions, indices: r.indices, extruder: 1, color: BODY_COLOR },
+            { name: 'face', positions: r.face.positions, indices: r.face.indices, extruder: 2, color: FACE_COLOR },
           ],
         },
       ];
       if (r.stem) {
         // 本体の右に 10 mm 空けて置く
         const gap = boxOf(r.positions).max[0] - boxOf(r.stem.positions).min[0] + 10;
-        objects.push({ name: 'stem', parts: [{ name: 'stem', positions: r.stem.positions, indices: r.stem.indices, extruder: 1 }], offset: [gap, 0, 0] });
+        objects.push({ name: 'stem', parts: [{ name: 'stem', positions: r.stem.positions, indices: r.stem.indices, extruder: 1, color: BODY_COLOR }], offset: [gap, 0, 0] });
       }
       files.push({ suffix: '.3mf', data: to3mf(objects) });
     } else {

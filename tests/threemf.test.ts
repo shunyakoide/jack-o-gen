@@ -41,8 +41,8 @@ describe('3MF', () => {
     const stem = r.stem!;
     const files = unzip(
       to3mf([
-        { name: 'lantern', parts: [{ name: 'body', positions: r.positions, indices: r.indices, extruder: 1 }, { name: 'face', positions: r.face!.positions, indices: r.face!.indices, extruder: 2 }] },
-        { name: 'stem', parts: [{ name: 'stem', positions: stem.positions, indices: stem.indices, extruder: 1 }], offset: [100, 0, 0] },
+        { name: 'lantern', parts: [{ name: 'body', positions: r.positions, indices: r.indices, extruder: 1, color: '#F07A1A' }, { name: 'face', positions: r.face!.positions, indices: r.face!.indices, extruder: 2, color: '#000000' }] },
+        { name: 'stem', parts: [{ name: 'stem', positions: stem.positions, indices: stem.indices, extruder: 1, color: '#f07a1a' }], offset: [100, 0, 0] },
       ]),
     );
     expect(Object.keys(files).sort()).toEqual(['3D/3dmodel.model', 'Metadata/model_settings.config', '[Content_Types].xml', '_rels/.rels']);
@@ -55,6 +55,9 @@ describe('3MF', () => {
     // 部品メッシュ 1・2 → オブジェクト 3、ヘタ 4 → オブジェクト 5。ビルドに載るのは 3 と 5 だけ
     expect(objects.find((o) => o.id === '3')!.body).toBe('<components><component objectid="1"/><component objectid="2"/></components>');
     expect([...model.matchAll(/<item objectid="(\d+)"/g)].map((m) => m[1])).toEqual(['3', '5']);
+    // 色はオブジェクトより前の色グループ 6 に 2 色（大文字小文字は同じ色）。顔だけ 2 色目
+    expect(model.indexOf('<m:colorgroup id="6"><m:color color="#F07A1AFF"/><m:color color="#000000FF"/></m:colorgroup>')).toBeLessThan(model.indexOf('<object '));
+    expect([...model.matchAll(/<object id="(\d+)"[^>]*pid="6" pindex="(\d)"/g)].map((m) => [m[1], m[2]])).toEqual([['1', '0'], ['2', '1'], ['4', '0']]);
 
     const config = files['Metadata/model_settings.config'];
     expect([...config.matchAll(/<part id="(\d+)"[^>]*><metadata key="name" value="(\w+)"\/><metadata key="extruder" value="(\d)"/g)].map((m) => m.slice(1))).toEqual([

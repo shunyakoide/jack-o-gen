@@ -109,7 +109,7 @@ export const en: Record<string, string> = {
   'stemAttach.peg': 'Stem separate (plug-in)',
   'faceStyle.cut': 'Cut out face',
   'faceStyle.inlay': 'Color face (no holes)',
-  inlayHint: 'The face is not cut out; the wall where the face is becomes a separate part that sits flush with the body. Downloads one .3mf: in Bambu Studio or OrcaSlicer (a "load geometry data only" notice is expected — just press OK) it opens as one object with body and face parts, face already on filament 2 — just make filament 2 black, adding a second filament first if only one is listed (needs a multi-color printer such as AMS). In other slicers, pick the face part\'s filament yourself.',
+  inlayHint: 'The face is not cut out; the wall where the face is becomes a separate part that sits flush with the body (two parts of one object in a .3mf). Needs multi-color printing.',
   pegHint: 'The stem is a separate part (its own STL in a .zip, or its own object in the color-face .3mf). It push-fits onto a pin on top; add a drop of glue if it is loose.',
   facePart: 'Face part (filament 2)',
   stemPart: 'Stem (separate object)',
