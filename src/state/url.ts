@@ -72,6 +72,7 @@ export function encodeParams(p: Params): string {
   // 既定値と同じ項目は省いて URL を短くする
   for (const d of NUM_DEFS) if (fmt(p[d.key]) !== fmt(d.def)) q.set(d.q, fmt(p[d.key]));
   if (p.stemAttach === 'peg') q.set('a', 'p');
+  if (p.faceStyle === 'inlay') q.set('fs', 'i');
   const f = encodeFace(p.face);
   if (f !== DEFAULT_FACE) q.set('f', f);
   if (p.face.drawn.length) q.set('d', p.face.drawn.map(encodeDrawn).join('*'));
@@ -87,6 +88,7 @@ export function decodeParams(search: string): Params | null {
     if (v !== null) (p as unknown as Record<string, number>)[d.key] = clampNum(d, Number(v));
   }
   if (q.get('a') === 'p') p.stemAttach = 'peg';
+  if (q.get('fs') === 'i') p.faceStyle = 'inlay';
   const f = q.get('f');
   if (f) {
     const parts = f.split('_');

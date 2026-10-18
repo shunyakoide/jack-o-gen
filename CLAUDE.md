@@ -29,4 +29,4 @@ React 18 + TS + Vite, three / @react-three/fiber / drei (preview), manifold-3d W
 - Work on a branch, then merge into `main`.
 
 ## Not in MVP (deferred)
-Lidded storage mode, 3MF multicolor, LED glow preview, gallery.
+Lidded storage mode, LED glow preview, gallery.

@@ -1,4 +1,4 @@
-// 形状生成の全体：本体＋ヘタの union、顔の切り抜き／彫り込み、中空化、チェック。
+// 形状生成の全体：本体＋ヘタの union、顔の切り抜き（または色分け用の別パーツ化）、中空化、チェック。
 
 import type { Params } from '../model/params';
 import { buildBody, DRAFT_RES, EXPORT_RES, FRONT_THETA, ledHole as ledDiameter, offsetInward, PREVIEW_RES, type Body, type BodyInfo } from './body';
@@ -41,6 +41,8 @@ export interface BuildResult {
   faceProblems: [number, number][][];
   /** 差し込み式のときだけ：ヘタ単体（本体に差した位置の座標）。seatZ は平らな底面の z */
   stem?: { positions: Float32Array; indices: Uint32Array; seatZ: number };
+  /** 色分け（faceStyle = 'inlay'）のときだけ：壁の顔の部分（本体と同じ座標。本体にはちょうどこの形の穴がある） */
+  face?: { positions: Float32Array; indices: Uint32Array };
 }
 
 export const MIN_HOLE = 2;
@@ -116,10 +118,12 @@ interface Ctx {
 
 /** 顔の 2D レイアウトを、中心から外向きの切り抜き用ソリッドにする */
 function faceCutter(c: Ctx, p: Params, info: BodyInfo, quality: Quality) {
+  // 色分けでは穴にならないので、天井の尖頭アーチも島のブリッジも要らない
+  const cut = p.faceStyle === 'cut';
   const face = layoutFace(c.wasm, c.scope, p.face, {
     scale: p.diameter / FACE_REF_DIAMETER,
-    arch: p.arch > 0,
-    bridge: p.bridge,
+    arch: cut && p.arch > 0,
+    bridge: cut ? p.bridge : 0,
     checkScale: (info.rEq - p.wall) / info.rEq,
     minHole: MIN_HOLE,
     minLink: MIN_LINK,
@@ -270,13 +274,26 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
 
     const face = faceCutter(c, p, info, quality);
     const { cavity, zCeil } = cavityOf(c, p, body);
+    const inlay = p.faceStyle === 'inlay';
     const cutters = [cavity, ledHole(c, p, fine)];
-    if (face.frustum) cutters.push(face.frustum);
+    if (face.frustum && !inlay) cutters.push(face.frustum);
     let result: Manifold = scope.keep(solid.subtract(scope.keep(wasm.Manifold.union(cutters))));
 
     let stemPart: BuildResult['stem'];
     let peg: ReturnType<typeof stemPin> | null = null;
     if (rf) ({ result, peg, stem: stemPart } = addPeg(c, p, body, stemM, result, rf, zCeil, fine));
+
+    // 色分け：壁を顔の錐台で 2 つに分ける。境界が共通なので段差なく、スライサーで 1 つの物体の 2 パーツとして重ねられる
+    let facePart: BuildResult['face'];
+    let components: number | null = null;
+    if (inlay && face.frustum) {
+      // 顔の内側の島（目の瞳など）は本体から離れるが、顔パーツと接して一緒に印刷されるので、部品数は分ける前の壁で数える
+      components = dropSlivers(c, result).components;
+      const faceM = dropSlivers(c, scope.keep(result.intersect(face.frustum))).result;
+      result = scope.keep(result.subtract(face.frustum));
+      const fm = faceM.getMesh();
+      if (fm.triVerts.length) facePart = { positions: xyz(fm), indices: new Uint32Array(fm.triVerts) };
+    }
 
     const cleaned = dropSlivers(c, result);
     result = cleaned.result;
@@ -300,13 +317,14 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
     const { items, level } = runChecks(p, {
       status: result.status(),
       empty: result.isEmpty(),
-      components: cleaned.components,
+      components: components ?? cleaned.components,
       stats,
       peg,
       face: face.check,
+      inlay,
     });
     stats.ms = performance.now() - t0;
-    return { positions, indices, groups, checks: items, level, stats, faceProblems: face.check.problems, ...(stemPart && { stem: stemPart }) };
+    return { positions, indices, groups, checks: items, level, stats, faceProblems: inlay ? [] : face.check.problems, ...(stemPart && { stem: stemPart }), ...(facePart && { face: facePart }) };
   } finally {
     scope.dispose();
   }

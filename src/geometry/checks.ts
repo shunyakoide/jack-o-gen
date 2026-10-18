@@ -25,6 +25,8 @@ export interface CheckInput {
   /** 差し込み式のピン寸法。fits=false はヘタが細すぎて最小ピンでも肉厚が残らない */
   peg: { rp: number; hp: number; fits: boolean } | null;
   face: FaceCheck;
+  /** 色分け：顔に穴が開かないので、穴の幅・連結部のチェックは要らない */
+  inlay?: boolean;
 }
 
 export function runChecks(p: Params, c: CheckInput): { items: CheckItem[]; level: CheckLevel } {
@@ -58,7 +60,7 @@ export function runChecks(p: Params, c: CheckInput): { items: CheckItem[]; level
   });
 
   const f = c.face;
-  if (f.holeCount > 0) {
+  if (f.holeCount > 0 && !c.inlay) {
     items.push({
       id: 'hole',
       level: f.tinyHoles > 0 || f.thinHoleArea > AREA_TOL ? 'yellow' : 'green',

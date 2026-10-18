@@ -212,6 +212,8 @@ function PrintTab() {
   const t = useT();
   const stemAttach = useStore((s) => s.params.stemAttach);
   const setStemAttach = useStore((s) => s.setStemAttach);
+  const faceStyle = useStore((s) => s.params.faceStyle);
+  const setFaceStyle = useStore((s) => s.setFaceStyle);
   return (
     <>
       <LedNotice />
@@ -224,6 +226,14 @@ function PrintTab() {
         ))}
       </div>
       {stemAttach === 'peg' && <p className="hint">{t('pegHint')}</p>}
+      <div className="seg wide">
+        {(['cut', 'inlay'] as const).map((f) => (
+          <button key={f} className={faceStyle === f ? 'on' : ''} aria-pressed={faceStyle === f} onClick={() => setFaceStyle(f)}>
+            {t(`faceStyle.${f}`)}
+          </button>
+        ))}
+      </div>
+      {faceStyle === 'inlay' && <p className="hint">{t('inlayHint')}</p>}
       <ExportPanel />
     </>
   );

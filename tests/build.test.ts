@@ -6,7 +6,7 @@ import { defaultParams, type Params } from '../src/model/params';
 import { PRESET_CARDS } from '../src/state/presets';
 import { matchStem, STEM_STYLES } from '../src/state/stems';
 import { decodeParams, encodeParams } from '../src/state/url';
-import { cachedBuild } from './fit-helpers';
+import { cachedBuild, solidOf } from './fit-helpers';
 
 const wasm = await loadManifold();
 
@@ -159,7 +159,32 @@ describe('URL', () => {
     expect(q.face.eyeL.x).toBeCloseTo(p.face.eyeL.x, 1);
     expect(q.stemAttach).toBe('fused');
     expect(decodeParams(encodeParams({ ...p, stemAttach: 'peg' }))!.stemAttach).toBe('peg');
+    expect(q.faceStyle).toBe('cut');
+    expect(decodeParams(encodeParams({ ...p, faceStyle: 'inlay' }))!.faceStyle).toBe('inlay');
   });
+});
+
+describe('顔の色分け（穴なし）', () => {
+  for (const stemAttach of ['fused', 'peg'] as const) {
+    it(`本体と顔パーツで壁を隙間・重なりなく埋める（ヘタ ${stemAttach}）`, () => {
+      const p: Params = { ...defaultParams(), stemAttach };
+      p.face.eyeL.preset = 'pupil'; // 島（瞳）があってもブリッジを入れず、部品数の警告も出さない
+      const { r, bad } = summary({ ...p, faceStyle: 'inlay' });
+      expect(bad).toEqual([]);
+      expect(r.checks.some((c) => c.id === 'island' || c.id === 'hole')).toBe(false);
+      const body = solidOf(wasm, r.positions, r.indices);
+      const face = solidOf(wasm, r.face!.positions, r.face!.indices);
+      expect(face.status()).toBe('NoError');
+      expect(face.volume()).toBeGreaterThan(100);
+      // 重ならない（段差なく接するだけ）
+      expect(body.intersect(face).volume()).toBeLessThan(1);
+      // 本体はアーチなしでくり抜いた形と同じ（違いはくり抜きにだけある瞳のブリッジの体積ぶん）
+      const cut = summary({ ...p, arch: 0 }).r;
+      const cutVol = solidOf(wasm, cut.positions, cut.indices).volume();
+      expect(Math.abs(body.volume() - cutVol) / cutVol).toBeLessThan(1e-3);
+      expect(cut.face).toBeUndefined();
+    });
+  }
 });
 
 
