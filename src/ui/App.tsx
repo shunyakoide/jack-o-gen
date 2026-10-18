@@ -87,12 +87,12 @@ export function App() {
           Jack-o-Gen
         </h1>
         <div className="topbar-actions">
+          <button className="ghost" onClick={reset}>
+            {t('reset')}
+          </button>
           <CheckBadge />
           <button className="ghost lang" onClick={() => setLang(lang === 'en' ? 'ja' : 'en')} title="Language / 言語">
             {lang === 'en' ? '日本語' : 'EN'}
-          </button>
-          <button className="ghost" onClick={reset}>
-            {t('reset')}
           </button>
           <button className="ghost" onClick={share}>
             {t('share')}
