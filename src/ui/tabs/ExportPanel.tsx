@@ -34,24 +34,27 @@ export function ExportPanel() {
   const red = preview?.level === 'red';
   const name = `jack-o-gen-lantern-${params.seed}`;
   // ダウンロードされるファイルと大きさ（ヘタは seatZ を底面として測る）
+  // 色分けは 3MF 1 つにパーツとしてまとまるので 行の名前はパーツ名
+  const inlay = !!preview?.face;
   const files: [string, Vec3][] = preview
-    ? [[`${name}.stl`, [preview.stats.width, preview.stats.depth, preview.stats.height]]]
+    ? [[inlay ? `${name}.3mf` : `${name}.stl`, [preview.stats.width, preview.stats.depth, preview.stats.height]]]
     : [];
-  if (preview?.face) files.push([`${name}-face.stl`, partSize(boxOf(preview.face.positions))]);
-  if (preview?.stem) files.push([`${name}-stem.stl`, partSize(boxOf(preview.stem.positions), preview.stem.seatZ)]);
+  if (preview?.face) files.push([`+ ${t('facePart')}`, partSize(boxOf(preview.face.positions))]);
+  if (preview?.stem) files.push([inlay ? `+ ${t('stemPart')}` : `${name}-stem.stl`, partSize(boxOf(preview.stem.positions), preview.stem.seatZ)]);
 
   const doExport = async () => {
     setConfirm(false);
     setBusy(true);
     setMsg(null);
     try {
-      const { files, result } = await callWorker((g) => g.exportStl(params), 120_000);
+      const { files, result } = await callWorker((g) => g.exportFiles(params), 120_000);
       if (result.level === 'red') {
         setMsg(t('exportRed'));
       } else {
         // 複数ファイルはブラウザが 2 本目をブロックするので zip 1 つにまとめる
-        if (files.length === 1) download(files[0].stl, `${name}.stl`, 'model/stl');
-        else download(zipStore(files.map((f) => ({ name: `${name}${f.suffix}.stl`, data: f.stl }))), `${name}.zip`, 'application/zip');
+        if (files.length > 1) download(zipStore(files.map((f) => ({ name: `${name}${f.suffix}`, data: f.data }))), `${name}.zip`, 'application/zip');
+        else if (files[0].suffix === '.3mf') download(files[0].data, `${name}.3mf`, 'model/3mf');
+        else download(files[0].data, `${name}.stl`, 'model/stl');
         setMsg(t('exportDone', { n: result.stats.triangles.toLocaleString(), s: (result.stats.ms / 1000).toFixed(1) }));
       }
     } catch (e) {
@@ -74,7 +77,7 @@ export function ExportPanel() {
         </ul>
       )}
       <button className="primary" disabled={busy || red || !preview} onClick={() => setConfirm(true)}>
-        {busy ? t('generating') : red ? t('blocked') : t('download')}
+        {busy ? t('generating') : red ? t('blocked') : t(inlay ? 'download3mf' : 'download')}
       </button>
       {msg && <p className="hint">{msg}</p>}
       <p className="hint">{t('exportHint')}</p>

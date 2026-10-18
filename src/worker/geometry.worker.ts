@@ -3,7 +3,9 @@ import * as Comlink from 'comlink';
 import wasmUrl from 'manifold-3d/manifold.wasm?url';
 import { buildPumpkin, type BuildResult, type Quality } from '../geometry/build';
 import { loadManifold } from '../geometry/manifold';
+import { boxOf } from '../geometry/layout';
 import { toBinaryStl } from '../geometry/stl';
+import { to3mf, type ThreeMfObject } from '../geometry/threemf';
 import type { Params } from '../model/params';
 
 const api = {
@@ -15,23 +17,44 @@ const api = {
     if (r.face) bufs.push(r.face.positions.buffer, r.face.indices.buffer);
     return Comlink.transfer(r, bufs);
   },
-  /** 差し込み式ではヘタを別ファイル（suffix '-stem'、底面を z=0 に移動）、色分けでは顔を別ファイル（suffix '-face'、本体と同じ座標）で返す */
-  async exportStl(p: Params): Promise<{ files: { suffix: string; stl: ArrayBuffer }[]; result: Omit<BuildResult, 'positions' | 'indices' | 'stem' | 'face'> }> {
+  /**
+   * 差し込み式ではヘタを別ファイル（'-stem.stl'、底面を z=0 に移動）にする。
+   * 色分けでは 3MF 1 つ（本体＋顔 = 1 オブジェクトの 2 パーツ、顔はフィラメント 2。ヘタは横に並べた別オブジェクト）
+   */
+  async exportFiles(p: Params): Promise<{ files: { suffix: string; data: ArrayBuffer }[]; result: Omit<BuildResult, 'positions' | 'indices' | 'stem' | 'face'> }> {
     const wasm = await loadManifold(wasmUrl);
     const r = buildPumpkin(wasm, p, 'export');
-    const files = [{ suffix: '', stl: toBinaryStl(r.positions, r.indices) }];
-    if (r.face) files.push({ suffix: '-face', stl: toBinaryStl(r.face.positions, r.face.indices) });
     if (r.stem) {
       const pos = r.stem.positions;
       for (let i = 2; i < pos.length; i += 3) pos[i] -= r.stem.seatZ;
-      files.push({ suffix: '-stem', stl: toBinaryStl(pos, r.stem.indices) });
+    }
+    const files: { suffix: string; data: ArrayBuffer }[] = [];
+    if (r.face) {
+      const objects: ThreeMfObject[] = [
+        {
+          name: 'jack-o-gen',
+          parts: [
+            { name: 'body', positions: r.positions, indices: r.indices, extruder: 1 },
+            { name: 'face', positions: r.face.positions, indices: r.face.indices, extruder: 2 },
+          ],
+        },
+      ];
+      if (r.stem) {
+        // 本体の右に 10 mm 空けて置く
+        const gap = boxOf(r.positions).max[0] - boxOf(r.stem.positions).min[0] + 10;
+        objects.push({ name: 'stem', parts: [{ name: 'stem', positions: r.stem.positions, indices: r.stem.indices, extruder: 1 }], offset: [gap, 0, 0] });
+      }
+      files.push({ suffix: '.3mf', data: to3mf(objects) });
+    } else {
+      files.push({ suffix: '.stl', data: toBinaryStl(r.positions, r.indices) });
+      if (r.stem) files.push({ suffix: '-stem.stl', data: toBinaryStl(r.stem.positions, r.stem.indices) });
     }
     const { positions, indices, stem, face, ...rest } = r;
     void positions;
     void indices;
     void stem;
     void face;
-    return Comlink.transfer({ files, result: rest }, files.map((f) => f.stl));
+    return Comlink.transfer({ files, result: rest }, files.map((f) => f.data));
   },
 };
 
