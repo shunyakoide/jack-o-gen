@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Viewer } from '../preview/Viewer';
 import { shareUrl, useAutoBuild, useUrlSync } from '../state/sync';
 import { useStore } from '../state/store';
+import { encodeParams } from '../state/url';
 import { CheckBadge, CheckList } from './CheckBadge';
 import { PresetCards } from './PresetCards';
 import { TabContent, TABS } from './tabs/Tabs';
@@ -34,6 +35,8 @@ export function App() {
   const redo = useStore((s) => s.redo);
   const canUndo = useStore((s) => s.past.length > 0);
   const canRedo = useStore((s) => s.future.length > 0);
+  // URL に何か書かれる＝既定から変わっている、のときだけリセットを出す
+  const changed = useStore((s) => encodeParams(s.params) !== '');
   const toast = useStore((s) => s.toast);
   const showToast = useStore((s) => s.showToast);
   const [hint, setHint] = useState(FIRST_VISIT);
@@ -87,9 +90,11 @@ export function App() {
           Jack-o-Gen
         </h1>
         <div className="topbar-actions">
-          <button className="ghost" onClick={reset}>
-            {t('reset')}
-          </button>
+          {changed && (
+            <button className="ghost" onClick={reset}>
+              {t('reset')}
+            </button>
+          )}
           <CheckBadge />
           <button className="ghost lang" onClick={() => setLang(lang === 'en' ? 'ja' : 'en')} title="Language / 言語">
             {lang === 'en' ? '日本語' : 'EN'}
