@@ -28,8 +28,8 @@ export interface CheckInput {
   face: FaceCheck;
   /** 色分け：顔に穴が開かないので、穴の幅・連結部のチェックは要らない */
   inlay?: boolean;
-  /** 蓋付き：口（リップの内径）[mm]。fits=false はリップを作る余地がない */
-  lid?: { opening: number; lipHeight: number; fits: boolean } | null;
+  /** 蓋付き：器の口の内接円の径 [mm]。fits=false は顔が蓋にかかる */
+  lid?: { opening: number; fits: boolean } | null;
 }
 
 export function runChecks(p: Params, c: CheckInput): { items: CheckItem[]; level: CheckLevel } {
@@ -57,8 +57,8 @@ export function runChecks(p: Params, c: CheckInput): { items: CheckItem[]; level
     items.push({
       id: 'lid',
       level: !c.lid.fits ? 'red' : small ? 'yellow' : 'green',
-      detail: !c.lid.fits ? 'noRoom' : small ? 'small' : 'ok',
-      vars: { d: c.lid.opening.toFixed(0), h: c.lid.lipHeight, led: LID.teaLight },
+      detail: !c.lid.fits ? 'face' : small ? 'small' : 'ok',
+      vars: { d: c.lid.opening.toFixed(0), led: LID.teaLight },
     });
   }
 

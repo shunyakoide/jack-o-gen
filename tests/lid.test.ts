@@ -19,7 +19,7 @@ function parts(p: Params) {
 
 describe('蓋付き', () => {
   for (const [id, p] of shapes) {
-    it(`${id}: 器と蓋がそれぞれ 1 つの閉じた形で、真上に外せて、横に 0.5 mm もずれない`, () => {
+    it(`${id}: 器と蓋がそれぞれ 1 つの閉じた形で、底は平ら。真上に外せて、落ちず、横にも回転にもずれない`, () => {
       const { r, bowl, lid } = parts(p);
       expect(r.level, r.checks.map((c) => `${c.level}:${c.id}:${c.detail}`).join()).not.toBe('red');
       expect(r.checks.find((c) => c.id === 'manifold')!.level).toBe('green');
@@ -27,13 +27,16 @@ describe('蓋付き', () => {
       expect(lid.decompose().length).toBe(1);
       const seat = r.lid!.seatZ;
       expect(lid.boundingBox().min[2]).toBeCloseTo(seat, 3);
-      // リップが切り口から立ち上がる
-      expect(bowl.boundingBox().max[2]).toBeGreaterThan(seat + 2);
-      // 載せた位置から真上へ持ち上げる間、器に当たらない
-      for (let dz = 0; dz <= 8; dz += 0.5) expect(lid.translate([0, 0, dz]).intersect(bowl).volume(), `dz=${dz}`).toBeLessThan(0.01);
-      // 0.5 mm 横にずらすとリップに当たる（すき間は LID.gap = 0.3 mm）
+      // 底面がそのままベッドに載る（星形の谷の円の面積以上が平ら）
+      const ri = 0.55 * 0.8 * r.stats.rEq;
+      expect(lid.slice(seat + 0.05).area()).toBeGreaterThan(Math.PI * ri * ri * 0.9);
+      for (let dz = 0.5; dz <= 8; dz += 0.5) expect(lid.translate([0, 0, dz]).intersect(bowl).volume(), `dz=${dz}`).toBeLessThan(0.01);
+      // 下へは 45° の座に当たって落ちない
+      expect(lid.translate([0, 0, -1]).intersect(bowl).volume()).toBeGreaterThan(0.05);
       expect(lid.translate([0.5, 0, 0.1]).intersect(bowl).volume()).toBeGreaterThan(0.05);
       expect(lid.translate([0, -0.5, 0.1]).intersect(bowl).volume()).toBeGreaterThan(0.05);
+      // 山半分だけ回すとギザギザが噛み合わない
+      expect(lid.rotate([0, 0, 180 / p.ribs]).intersect(bowl).volume()).toBeGreaterThan(1);
     });
   }
 
@@ -59,11 +62,11 @@ describe('蓋付き', () => {
     expect(lid.boundingBox().max[2]).toBeGreaterThan(r.stem!.seatZ);
   });
 
-  it('顔が頂上近くまであると蓋が作れず、赤で止める', () => {
+  it('顔が蓋にかかると赤で止める', () => {
     const p = defaultParams();
-    p.face.eyeL = { ...p.face.eyeL, y: 40, h: 30 };
+    p.face.eyeL = { ...p.face.eyeL, y: 55, h: 30 };
     const r = cachedBuild(wasm, { ...p, opening: 'lid' }, 'draft');
-    expect(r.checks.find((c) => c.id === 'lid')).toMatchObject({ level: 'red', detail: 'noRoom' });
+    expect(r.checks.find((c) => c.id === 'lid')).toMatchObject({ level: 'red', detail: 'face' });
     expect(r.lid).toBeUndefined();
   });
 

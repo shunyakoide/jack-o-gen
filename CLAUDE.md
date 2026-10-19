@@ -26,7 +26,7 @@ React 18 + TS + Vite, three / @react-three/fiber / drei (preview), manifold-3d W
 - Keep the visible control count low; prefer presets/pattern pickers over new sliders.
 - Stem bend ≲ 0.4 in presets (stronger bends make the tip underside overhang).
 - Lantern mode is LED-only (PLA softens ~60 °C) — keep the warning in UI and pre-download dialog.
-- Lid mode (`opening: 'lid'`): no floor LED hole; seam auto-placed above the face; bowl gets a 2-band lip (`LID` in `build.ts`) that tests require to lift straight off and hold the lid within 0.5 mm sideways.
+- Lid mode (`opening: 'lid'`): no floor LED hole; a zigzag 45° carved lid around the stem (`LID` / `lidCut` in `build.ts`) whose flat underside is the enlarged flat inner ceiling. Tests require it to lift straight off, not drop in, stay within 0.5 mm sideways, and not fit when rotated half a tooth. Keep the star off the body grid's angles (degenerate seam triangles otherwise).
 - Work on a branch, then merge into `main`.
 
 ## Not planned
