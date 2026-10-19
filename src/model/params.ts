@@ -5,6 +5,8 @@ export type StemAttach = 'fused' | 'peg';
 /** 顔を切り抜くか、穴を開けずに別パーツ（別の色で印刷）にするか */
 export type FaceStyle = 'cut' | 'inlay';
 export type PartKind = 'eye' | 'nose' | 'mouth';
+/** LED を入れる口：底の穴（ランタン）か、上の蓋（底は閉じて小物入れにもなる） */
+export type Opening = 'base' | 'lid';
 
 /** 展開図上の配置。顔パーツと描いた形で共通 */
 export interface PartBox {
@@ -85,6 +87,7 @@ export interface NumParams {
 export interface Params extends NumParams {
   stemAttach: StemAttach;
   faceStyle: FaceStyle;
+  opening: Opening;
   face: FaceParams;
 }
 
@@ -166,7 +169,7 @@ export function defaultFace(): FaceParams {
 export function defaultParams(): Params {
   const p = {} as NumParams;
   for (const d of NUM_DEFS) (p as unknown as Record<string, number>)[d.key] = d.def;
-  return { ...p, stemAttach: 'fused', faceStyle: 'cut', face: defaultFace() };
+  return { ...p, stemAttach: 'fused', faceStyle: 'cut', opening: 'base', face: defaultFace() };
 }
 
 export function clampNum(def: NumDef, v: number): number {

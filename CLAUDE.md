@@ -14,7 +14,7 @@ React 18 + TS + Vite, three / @react-three/fiber / drei (preview), manifold-3d W
 
 ## Layout
 - `src/model/params.ts` — single source of truth for parameters (`NUM_DEFS`: URL key, group, range, `advanced` = under "More", `hidden` = no UI, only presets/URL).
-- `src/geometry/` — `body.ts` (r(θ,φ) surface, 45° overhang clamp, flat base), `stem.ts`, `face/` (2D presets, `draw.ts` freehand pen → normalized shapes/lines, layout: pointed-arch tops, island bridges, 2D checks + red problem regions), `build.ts` (CSG: lantern = constant-wall hollow + LED hole + flat Ø50 bridge at the top center + 20° (70° overhang) cone only under the flat top), `checks.ts` (language-neutral codes), `stl.ts`.
+- `src/geometry/` — `body.ts` (r(θ,φ) surface, 45° overhang clamp, flat base), `stem.ts`, `face/` (2D presets, `draw.ts` freehand pen → normalized shapes/lines, layout: pointed-arch tops, island bridges, 2D checks + red problem regions), `build.ts` (CSG: lantern = constant-wall hollow + LED hole + flat Ø50 bridge at the top center + 20° (70° overhang) cone only under the flat top; lid mode splits off the top), `checks.ts` (language-neutral codes), `stl.ts`.
 - `src/worker/` — geometry worker (preview res vs export res).
 - `src/state/` — store, URL sync (only non-default values), preset cards, stem styles (`stems.ts`).
 - `src/i18n/` — `en.ts` / `ja.ts`; English is default, toggle in top bar. Every UI string goes through `useT()`.
@@ -26,7 +26,8 @@ React 18 + TS + Vite, three / @react-three/fiber / drei (preview), manifold-3d W
 - Keep the visible control count low; prefer presets/pattern pickers over new sliders.
 - Stem bend ≲ 0.4 in presets (stronger bends make the tip underside overhang).
 - Lantern mode is LED-only (PLA softens ~60 °C) — keep the warning in UI and pre-download dialog.
+- Lid mode (`opening: 'lid'`): no floor LED hole; seam auto-placed above the face; bowl gets a 2-band lip (`LID` in `build.ts`) that tests require to lift straight off and hold the lid within 0.5 mm sideways.
 - Work on a branch, then merge into `main`.
 
-## Not in MVP (deferred)
-Lidded storage mode, LED glow preview, gallery.
+## Not planned
+Gallery (dropped).

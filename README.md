@@ -4,7 +4,7 @@
 
 Jack-o-Gen is a browser-only jack-o'-lantern designer that exports STL files for 3D printing. Everything runs on your machine; there is no server.
 
-**How to use.** Pick a preset, shape the body, ribs, and stem on the Shape tab, then drag the eyes, nose, and mouth on the Face tab. On the Print tab, set the wall thickness and LED opening, choose an attached or plug-in stem, check the print warnings, and download the STL (or a 3MF when the face is printed in a second color instead of cut out). The Share button copies a link that restores the design. Light it with an LED tea light only, never a candle: PLA softens around 60 °C.
+**How to use.** Pick a preset, shape the body, ribs, and stem on the Shape tab, then drag the eyes, nose, and mouth on the Face tab. On the Print tab, set the wall thickness and LED opening (or switch to a lid on top, which keeps the bottom closed so it also works as a candy bowl), choose an attached or plug-in stem, check the print warnings, and download the STL (or a 3MF when the face is printed in a second color instead of cut out). The bulb button on the preview shows the pumpkin lit from inside. The Share button copies a link that restores the design. Light it with an LED tea light only, never a candle: PLA softens around 60 °C.
 
 Tuned for a 0.4 mm nozzle and PLA. There is no size limit, so it works with any bed size.
 
@@ -67,7 +67,7 @@ src/
     face/presets.ts    顔パーツの 2D プリセット
     face/draw.ts       手描きの線を閉じた多角形にする
     face/layout.ts     尖頭アーチ化・島のブリッジ・2D チェック
-    build.ts           CSG（union／difference）、中空化、彫り込み
+    build.ts           CSG（union／difference）、中空化、彫り込み、蓋とリップ
     checks.ts          プリント適性チェック
     layout.ts          Print タブのベッド上の配置
     stl.ts             バイナリ STL
@@ -94,4 +94,6 @@ tests/                 ジオメトリのテスト
 
 - ランタンの内天井は 45° の円錐です。上部（肩）は肉厚が厚くなりますが、スライサーのインフィルで埋まります。
 - プレビューも低解像度で CSG を実行し、実際の穴を表示します。書き出し時は高解像度で作り直します。
-- MVP では未実装：蓋付き収納、LED 点灯時の透過プレビュー、ギャラリー。
+- 蓋付き：切れ目は顔の上端の 3 mm 上。器のリップは切れ目から上の中空部の断面の共通部分を 0.3 mm 内側に寄せた 2 段で、蓋を真上に外せて横には 0.3 mm しかずれません。リップの高さ（2〜6 mm）はティーライト（φ40 mm）が通る口を残せる最大を選びます。
+- 点灯プレビューは内側に点光源を置き、くり抜いた面と内側を発光させる表現です（壁を透ける光は再現しません）。
+- ギャラリーは作りません。

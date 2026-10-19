@@ -73,6 +73,7 @@ export function encodeParams(p: Params): string {
   for (const d of NUM_DEFS) if (fmt(p[d.key]) !== fmt(d.def)) q.set(d.q, fmt(p[d.key]));
   if (p.stemAttach === 'peg') q.set('a', 'p');
   if (p.faceStyle === 'inlay') q.set('fs', 'i');
+  if (p.opening === 'lid') q.set('o', 'l');
   const f = encodeFace(p.face);
   if (f !== DEFAULT_FACE) q.set('f', f);
   if (p.face.drawn.length) q.set('d', p.face.drawn.map(encodeDrawn).join('*'));
@@ -89,6 +90,7 @@ export function decodeParams(search: string): Params | null {
   }
   if (q.get('a') === 'p') p.stemAttach = 'peg';
   if (q.get('fs') === 'i') p.faceStyle = 'inlay';
+  if (q.get('o') === 'l') p.opening = 'lid';
   const f = q.get('f');
   if (f) {
     const parts = f.split('_');

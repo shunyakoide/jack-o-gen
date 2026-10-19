@@ -4,6 +4,7 @@ import type { Params, SelKey } from '../model/params';
 import { AREA_TOL, type FaceCheck } from './face/layout';
 import { ledHole } from './body';
 import { FIT } from './stem';
+import { LID } from './build';
 
 export type CheckLevel = 'red' | 'yellow' | 'green';
 
@@ -27,6 +28,8 @@ export interface CheckInput {
   face: FaceCheck;
   /** 色分け：顔に穴が開かないので、穴の幅・連結部のチェックは要らない */
   inlay?: boolean;
+  /** 蓋付き：口（リップの内径）[mm]。fits=false はリップを作る余地がない */
+  lid?: { opening: number; lipHeight: number; fits: boolean } | null;
 }
 
 export function runChecks(p: Params, c: CheckInput): { items: CheckItem[]; level: CheckLevel } {
@@ -49,13 +52,24 @@ export function runChecks(p: Params, c: CheckInput): { items: CheckItem[]; level
     });
   }
 
+  if (c.lid) {
+    const small = c.lid.opening < LID.teaLight;
+    items.push({
+      id: 'lid',
+      level: !c.lid.fits ? 'red' : small ? 'yellow' : 'green',
+      detail: !c.lid.fits ? 'noRoom' : small ? 'small' : 'ok',
+      vars: { d: c.lid.opening.toFixed(0), h: c.lid.lipHeight, led: LID.teaLight },
+    });
+  }
+
   const ratio = c.stats.contactDiameter / c.stats.maxDiameter;
   const led = ledHole(p);
-  const ledFits = led + 2 * p.wall + 2 <= c.stats.contactDiameter;
+  // 蓋付きは底に穴が無い
+  const ledFits = !!c.lid || led + 2 * p.wall + 2 <= c.stats.contactDiameter;
   items.push({
     id: 'base',
     level: ratio >= 0.35 && ledFits ? 'green' : 'red',
-    detail: ledFits ? 'led' : 'ledTooBig',
+    detail: c.lid ? 'closed' : ledFits ? 'led' : 'ledTooBig',
     vars: { d: c.stats.contactDiameter.toFixed(0), pct: Math.round(ratio * 100), led: led.toFixed(0) },
   });
 

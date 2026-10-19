@@ -16,6 +16,8 @@ const bad: Partial<CheckInput>[] = [
   { stats: { contactDiameter: 60, maxDiameter: 240 } },
   { face: { ...ok.face, tinyHoles: 1 } }, { face: { ...ok.face, thinHoleArea: 5 } },
   { face: { ...ok.face, mergedHoles: 1 } }, { face: { ...ok.face, narrowBridgeArea: 5 } },
+  { lid: { opening: 30, lipHeight: 3, fits: true } }, { lid: { opening: 8, lipHeight: 0, fits: false } },
+  { lid: { opening: 50, lipHeight: 6, fits: true }, stats: { contactDiameter: 30, maxDiameter: 120 } },
 ];
 
 describe('チェックの直し方', () => {

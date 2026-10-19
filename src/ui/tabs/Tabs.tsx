@@ -214,10 +214,21 @@ function PrintTab() {
   const setStemAttach = useStore((s) => s.setStemAttach);
   const faceStyle = useStore((s) => s.params.faceStyle);
   const setFaceStyle = useStore((s) => s.setFaceStyle);
+  const opening = useStore((s) => s.params.opening);
+  const setOpening = useStore((s) => s.setOpening);
   return (
     <>
       <LedNotice />
-      <ParamGroup group="print" />
+      {/* 蓋付きは底に穴を開けないので LED 用開口は要らない */}
+      <ParamGroup group="print" exclude={opening === 'lid' ? ['led'] : []} />
+      <div className="seg wide">
+        {(['base', 'lid'] as const).map((o) => (
+          <button key={o} className={opening === o ? 'on' : ''} aria-pressed={opening === o} onClick={() => setOpening(o)}>
+            {t(`opening.${o}`)}
+          </button>
+        ))}
+      </div>
+      {opening === 'lid' && <p className="hint">{t('lidHint')}</p>}
       <div className="seg wide">
         {(['fused', 'peg'] as const).map((a) => (
           <button key={a} className={stemAttach === a ? 'on' : ''} aria-pressed={stemAttach === a} onClick={() => setStemAttach(a)}>

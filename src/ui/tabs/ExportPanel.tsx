@@ -37,9 +37,10 @@ export function ExportPanel() {
   // 色分けは 3MF 1 つにパーツとしてまとまるので 行の名前はパーツ名
   const inlay = !!preview?.face;
   const files: [string, Vec3][] = preview
-    ? [[inlay ? `${name}.3mf` : `${name}.stl`, [preview.stats.width, preview.stats.depth, preview.stats.height]]]
+    ? [[inlay ? `${name}.3mf` : `${name}.stl`, preview.lid ? partSize(boxOf(preview.positions)) : [preview.stats.width, preview.stats.depth, preview.stats.height]]]
     : [];
   if (preview?.face) files.push([`+ ${t('facePart')}`, partSize(boxOf(preview.face.positions))]);
+  if (preview?.lid) files.push([inlay ? `+ ${t('lidPart')}` : `${name}-lid.stl`, partSize(boxOf(preview.lid.positions), preview.lid.seatZ)]);
   if (preview?.stem) files.push([inlay ? `+ ${t('stemPart')}` : `${name}-stem.stl`, partSize(boxOf(preview.stem.positions), preview.stem.seatZ)]);
 
   const doExport = async () => {

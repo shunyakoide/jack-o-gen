@@ -2,10 +2,11 @@
 
 import type { Params } from '../model/params';
 import { buildBody, DRAFT_RES, EXPORT_RES, FRONT_THETA, ledHole as ledDiameter, offsetInward, PREVIEW_RES, type Body, type BodyInfo } from './body';
+import { boxOf } from './layout';
 import { runChecks, type CheckItem, type CheckLevel } from './checks';
 import { FACE_REF_DIAMETER, layoutFace, subdivide, type FaceCheck } from './face/layout';
 import type { Pt } from './face/presets';
-import { Scope, type Manifold, type Wasm } from './manifold';
+import { Scope, type CrossSection, type Manifold, type Wasm } from './manifold';
 import { buildStem, FIT, stemPin, stemSeatRadius } from './stem';
 
 // draft = スライダー操作中の粗いプレビュー
@@ -43,6 +44,8 @@ export interface BuildResult {
   stem?: { positions: Float32Array; indices: Uint32Array; seatZ: number };
   /** 色分け（faceStyle = 'inlay'）のときだけ：壁の顔の部分（本体と同じ座標。本体にはちょうどこの形の穴がある） */
   face?: { positions: Float32Array; indices: Uint32Array };
+  /** 蓋付き（opening = 'lid'）のときだけ：蓋（本体に載せた位置の座標）。seatZ は切り口（蓋の底面）の z */
+  lid?: { positions: Float32Array; indices: Uint32Array; groups: MeshGroup[]; seatZ: number };
 }
 
 export const MIN_HOLE = 2;
@@ -179,6 +182,12 @@ function cavityOf(c: Ctx, p: Params, body: Body) {
   return { cavity, zCeil: zCap };
 }
 
+/** 顔（壁を通る部分）の上端の z */
+function faceTopOf(scope: Scope, frustum: Manifold, bodyM: Manifold): number {
+  const onWall = scope.keep(frustum.intersect(bodyM));
+  return onWall.isEmpty() ? -Infinity : onWall.boundingBox().max[2];
+}
+
 /** 底の LED 用の穴 */
 function ledHole(c: Ctx, p: Params, fine: boolean): Manifold {
   const led = c.scope.keep(
@@ -231,6 +240,92 @@ function addPeg(c: Ctx, p: Params, body: Body, stemM: Manifold, result: Manifold
   return { result: withPin, peg, stem };
 }
 
+export const LID = {
+  /** 器のリップが切り口から立ち上がる高さ。上は内天井の円錐が迫るので、口が広く取れる最大の高さを選ぶ */
+  lipHeights: [6, 5, 4, 3, 2],
+  /** リップの厚さ（0.4 mm ノズルで 4 周） */
+  lipWall: 1.6,
+  /** リップ外周と蓋の内面のすき間 */
+  gap: 0.3,
+  /** 顔の上端から切り口までに残す壁 */
+  faceMargin: 3,
+  /** これより狭い口は作らない（リップが作れない扱い） */
+  minOpening: 16,
+  /** LED ティーライト（Ø38 mm 前後）が通る口の径 */
+  teaLight: 40,
+};
+
+/** 断面の内側で、原点を中心にした内接円の半径（断面が無ければ 0） */
+function inscribedRadius(cs: CrossSection): number {
+  let r = Infinity;
+  const polys = cs.toPolygons() as Pt[][];
+  for (const poly of polys) {
+    for (let i = 0; i < poly.length; i++) {
+      const [ax, ay] = poly[i];
+      const [bx, by] = poly[(i + 1) % poly.length];
+      const ex = bx - ax;
+      const ey = by - ay;
+      const t = Math.max(0, Math.min(1, -(ax * ex + ay * ey) / (ex * ex + ey * ey || 1)));
+      r = Math.min(r, Math.hypot(ax + t * ex, ay + t * ey));
+    }
+  }
+  return polys.length ? r : 0;
+}
+
+/**
+ * 蓋付き：切り口の高さ zCut と、リップを残した中空部、蓋と器を分ける切り分け用ソリッド。
+ * 切り口は顔の上端より faceMargin 上（顔が蓋と器にまたがらない）。
+ * リップは 2 段で、各段の外形は「切り口からその段の上端までの中空部の断面すべての共通部分」を gap 内側へ寄せたもの。
+ * 蓋を真上に持ち上げると、高さ z には z より下の断面が来るので、共通部分の内側なら当たらない（筋がねじれていても）。
+ * 下の段の上端で蓋の内面との横のすき間がちょうど gap になり、蓋が横にずれない。上の 1 mm の段は蓋の内天井（斜め）からも gap 離す。
+ * 上ほど細る段なので器を立てて印刷してもオーバーハングにならない。内面は垂直、その下は 45° の肉で壁とつなぐ
+ */
+function lidCut(c: Ctx, body: Body, cavity: Manifold, faceTop: number, fine: boolean) {
+  const { wasm, scope } = c;
+  const info = body.info;
+  const zCut = Math.max(info.zCenter + 0.45 * (info.zTop - info.zCenter), faceTop + LID.faceMargin);
+  const step = 0.5;
+  const seg = fine ? 64 : 24;
+  const sliceAt = (dz: number) => scope.keep(cavity.slice(zCut + Math.max(0.01, dz)));
+  // common[j] = 切り口から j 段目の上端（(j+1)·step）までの断面の共通部分
+  const common: CrossSection[] = [];
+  let acc = sliceAt(0);
+  for (let j = 0; j < LID.lipHeights[0] / step; j++) common.push((acc = scope.keep(acc.intersect(sliceAt((j + 1) * step)))));
+  const inset = (cs: CrossSection, d: number) => scope.keep(cs.offset(-d, 'Round', 2, seg));
+  const CAP = 1;
+  /** 高さ h のリップ：2 段の [下端, 上端, 外形のもと]（上の段は蓋の内天井から gap 上の断面とも共通部分を取る）と内側の口 */
+  const lipOf = (h: number) => {
+    const n = Math.round(h / step);
+    const top = scope.keep(common[n - 1].intersect(sliceAt(h + LID.gap)));
+    const bands: [number, number, CrossSection][] = [[0, h - CAP, common[Math.round((h - CAP) / step) - 1]], [h - CAP, h, top]];
+    const hole = inset(top, LID.gap + LID.lipWall);
+    return { bands, hole, opening: 2 * inscribedRadius(hole) };
+  };
+  const lips = LID.lipHeights.map((h) => ({ h, ...lipOf(h) }));
+  const lip = lips.find((l) => l.opening >= LID.teaLight) ?? lips.find((l) => l.opening >= LID.minOpening);
+  if (!lip) return { zCut, opening: lips[lips.length - 1].opening, lipHeight: 0, fits: false as const };
+  const prism = (cs: CrossSection, z0: number, z1: number) => scope.keep(scope.keep(cs.extrude(z1 - z0)).translate([0, 0, z0]));
+  const zTopLip = zCut + lip.h;
+  const ri = lip.opening / 2;
+  // 段のリップと、その下の 45° の肉（内接円 ri から外へ下がる円錐）
+  const R = info.rMax + 5;
+  const wedge = scope.keep(wasm.Manifold.revolve([[[ri, zCut], [R, zCut - (R - ri)], [R, zCut + 0.01], [ri, zCut + 0.01]]], fine ? 128 : 48));
+  const bands = lip.bands.map(([z0, z1, cs]) => prism(scope.keep(inset(cs, LID.gap).subtract(lip.hole)), zCut + z0, zCut + z1));
+  const ring = scope.keep(scope.keep(wasm.Manifold.union([wedge, ...bands])).asOriginal());
+  c.ids[ring.originalID()] = 'inner';
+  // 中空部からリップの分を残す（本体の外へはみ出す分はくり抜きに関係しない）
+  const cavityLeft = scope.keep(cavity.subtract(ring));
+  // 切り口より上から、リップとすき間の半分を除いたもの（蓋 = 形 ∩ これ、器 = 形 − これ）
+  const B = 4 * R;
+  const above = scope.keep(scope.keep(scope.keep(wasm.Manifold.cube([B, B, B])).translate([-B / 2, -B / 2, zCut])).asOriginal());
+  c.ids[above.originalID()] = 'body';
+  const half = LID.gap / 2;
+  const [[, , low], [, , top]] = lip.bands;
+  const clear = [prism(inset(low, half), zCut - 1, zTopLip - CAP), prism(inset(top, half), zTopLip - CAP, zTopLip + half)];
+  const lidRegion = scope.keep(above.subtract(scope.keep(wasm.Manifold.union(clear))));
+  return { zCut, opening: lip.opening, lipHeight: lip.h, fits: true as const, cavity: cavityLeft, lidRegion };
+}
+
 /** CSG の数値誤差で出る体積ほぼ 0 の破片は捨てる */
 function dropSlivers(c: Ctx, result: Manifold) {
   const parts = result.decompose();
@@ -275,13 +370,29 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
     const face = faceCutter(c, p, info, quality);
     const { cavity, zCeil } = cavityOf(c, p, body);
     const inlay = p.faceStyle === 'inlay';
-    const cutters = [cavity, ledHole(c, p, fine)];
+    // 蓋付きは LED を上から入れるので底に穴を開けない
+    const lid =
+      p.opening === 'lid'
+        ? lidCut(c, body, cavity, face.frustum ? faceTopOf(scope, face.frustum, bodyM) : -Infinity, fine)
+        : null;
+    const cutters = lid ? [lid.fits ? lid.cavity : cavity] : [cavity, ledHole(c, p, fine)];
     if (face.frustum && !inlay) cutters.push(face.frustum);
     let result: Manifold = scope.keep(solid.subtract(scope.keep(wasm.Manifold.union(cutters))));
 
     let stemPart: BuildResult['stem'];
     let peg: ReturnType<typeof stemPin> | null = null;
     if (rf) ({ result, peg, stem: stemPart } = addPeg(c, p, body, stemM, result, rf, zCeil, fine));
+
+    // 蓋と器に分ける（ヘタ・ピンは蓋に付く。顔は切り口より下なので器だけに残る）
+    let lidPart: BuildResult['lid'];
+    let lidComponents = 1;
+    if (lid?.fits) {
+      const lidCleaned = dropSlivers(c, scope.keep(result.intersect(lid.lidRegion)));
+      lidComponents = lidCleaned.components;
+      result = scope.keep(result.subtract(lid.lidRegion));
+      const lm = lidCleaned.result.getMesh();
+      if (lm.triVerts.length) lidPart = { positions: xyz(lm), indices: new Uint32Array(lm.triVerts), groups: meshGroups(lm, c.ids), seatZ: lid.zCut };
+    }
 
     // 色分け：壁を顔の錐台で 2 つに分ける。境界が共通なので段差なく、スライサーで 1 つの物体の 2 パーツとして重ねられる
     let facePart: BuildResult['face'];
@@ -303,7 +414,9 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
     const indices = new Uint32Array(mesh.triVerts);
     const groups = meshGroups(mesh, c.ids);
 
-    const bb = result.boundingBox();
+    // 寸法は組み立てた全体（蓋付きでは器＋蓋）
+    const lb = lidPart && boxOf(lidPart.positions);
+    const bb = lb ? boxOf([...result.boundingBox().min, ...result.boundingBox().max, ...lb.min, ...lb.max]) : result.boundingBox();
     const stats: BuildStats = {
       width: bb.max[0] - bb.min[0],
       depth: bb.max[1] - bb.min[1],
@@ -317,14 +430,16 @@ export function buildPumpkin(wasm: Wasm, p: Params, quality: Quality): BuildResu
     const { items, level } = runChecks(p, {
       status: result.status(),
       empty: result.isEmpty(),
-      components: components ?? cleaned.components,
+      // 蓋付きでは器と蓋がそれぞれ 1 つの塊なら 1
+      components: (components ?? cleaned.components) + lidComponents - 1,
       stats,
       peg,
       face: face.check,
       inlay,
+      lid: lid && { opening: lid.opening, lipHeight: lid.lipHeight, fits: lid.fits },
     });
     stats.ms = performance.now() - t0;
-    return { positions, indices, groups, checks: items, level, stats, faceProblems: inlay ? [] : face.check.problems, ...(stemPart && { stem: stemPart }), ...(facePart && { face: facePart }) };
+    return { positions, indices, groups, checks: items, level, stats, faceProblems: inlay ? [] : face.check.problems, ...(stemPart && { stem: stemPart }), ...(facePart && { face: facePart }), ...(lidPart && { lid: lidPart }) };
   } finally {
     scope.dispose();
   }

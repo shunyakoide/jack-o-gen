@@ -21,21 +21,28 @@ export function partSize(box: Box, floorZ = box.min[2]): Vec3 {
   return [box.max[0] - box.min[0], box.max[1] - box.min[1], box.max[2] - floorZ];
 }
 
-/** 本体とヘタの間隔 [mm] */
+/** パーツどうしの間隔 [mm] */
 export const PRINT_GAP = 10;
 
+/** 別パーツ（蓋・ヘタ）。seatZ をベッド面 z=0 に下ろす */
+export interface LoosePart {
+  box: Box;
+  seatZ: number;
+}
+
 /**
- * 本体とヘタを +x 方向に gap mm あけて並べ、組の中心をベッド中央 (0,0) に置く平行移動量。
- * 本体は底面を z=0、ヘタは seatZ を z=0 に下ろす。
+ * 本体の +x 側に別パーツを gap mm ずつあけて順に並べ、組の中心をベッド中央 (0,0) に置く平行移動量。
+ * 本体は底面を z=0 に下ろす。
  */
-export function printLayout(body: Box, stem: { box: Box; seatZ: number } | null, gap = PRINT_GAP): { body: Vec3; stem: Vec3 | null } {
+export function printLayout(body: Box, parts: LoosePart[], gap = PRINT_GAP): { body: Vec3; parts: Vec3[] } {
   const cy = (b: Box) => -(b.min[1] + b.max[1]) / 2;
-  if (!stem) return { body: [-(body.min[0] + body.max[0]) / 2, cy(body), -body.min[2]], stem: null };
-  const s = stem.box;
-  const total = body.max[0] - body.min[0] + gap + (s.max[0] - s.min[0]);
-  const bx = -total / 2 - body.min[0];
-  return {
-    body: [bx, cy(body), -body.min[2]],
-    stem: [bx + body.max[0] + gap - s.min[0], cy(s), -stem.seatZ],
+  const width = (b: Box) => b.max[0] - b.min[0];
+  const total = parts.reduce((w, p) => w + gap + width(p.box), width(body));
+  let x = -total / 2;
+  const place = (b: Box, z: number): Vec3 => {
+    const v: Vec3 = [x - b.min[0], cy(b), -z];
+    x += width(b) + gap;
+    return v;
   };
+  return { body: place(body, body.min[2]), parts: parts.map((p) => place(p.box, p.seatZ)) };
 }
