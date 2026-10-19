@@ -4,7 +4,7 @@
 
 Jack-o-Gen is a browser-only jack-o'-lantern designer that exports STL files for 3D printing. Everything runs on your machine; there is no server.
 
-**How to use.** Pick a preset, shape the body, ribs, and stem on the Shape tab, then drag the eyes, nose, and mouth on the Face tab. On the Print tab, set the wall thickness and LED opening, choose an attached or plug-in stem, check the print warnings, and download the STL. The Share button copies a link that restores the design. Light it with an LED tea light only, never a candle: PLA softens around 60 °C.
+**How to use.** Pick a preset, shape the body, ribs, and stem on the Shape tab, then drag the eyes, nose, and mouth on the Face tab. On the Print tab, set the wall thickness and LED opening, choose an attached or plug-in stem, check the print warnings, and download the STL (or a 3MF when the face is printed in a second color instead of cut out). The Share button copies a link that restores the design. Light it with an LED tea light only, never a candle: PLA softens around 60 °C.
 
 Tuned for a 0.4 mm nozzle and PLA. There is no size limit, so it works with any bed size.
 
@@ -65,11 +65,16 @@ src/
     body.ts            外形 r(θ,φ)、45°クランプ、底面カット、経緯度グリッド、内側オフセット
     stem.ts            ヘタのスイープ
     face/presets.ts    顔パーツの 2D プリセット
+    face/draw.ts       手描きの線を閉じた多角形にする
     face/layout.ts     尖頭アーチ化・島のブリッジ・2D チェック
     build.ts           CSG（union／difference）、中空化、彫り込み
     checks.ts          プリント適性チェック
+    layout.ts          Print タブのベッド上の配置
     stl.ts             バイナリ STL
+    threemf.ts         色分け用の 3MF
+    zip.ts             STL をまとめる無圧縮 ZIP
   worker/              Web Worker（comlink）
+  i18n/                英語・日本語の UI 文言
   state/               zustand ストア、URL 同期、プリセット
   preview/Viewer.tsx   3D プレビュー
   ui/                  パネル・タブ・顔エディタ
@@ -89,4 +94,4 @@ tests/                 ジオメトリのテスト
 
 - ランタンの内天井は 45° の円錐です。上部（肩）は肉厚が厚くなりますが、スライサーのインフィルで埋まります。
 - プレビューも低解像度で CSG を実行し、実際の穴を表示します。書き出し時は高解像度で作り直します。
-- MVP では未実装：蓋付き収納、3MF 多色出力、顔の自由描画、LED 点灯時の透過プレビュー、ギャラリー。
+- MVP では未実装：蓋付き収納、LED 点灯時の透過プレビュー、ギャラリー。
