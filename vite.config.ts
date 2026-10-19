@@ -2,6 +2,10 @@ import { defineConfig } from 'vitest/config';
 import { loadEnv, type HtmlTagDescriptor } from 'vite';
 import react from '@vitejs/plugin-react';
 
+// Public origin, not a secret, so it lives in code; .env* files stay untracked for secrets.
+// Forks override with SITE_URL in .env.local (empty disables absolute URLs).
+const PRODUCTION_SITE_URL = 'https://jack-o-gen.shunyakoide.com';
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', ['SITE_']);
   const origin = (raw: string | undefined) => {
@@ -12,7 +16,7 @@ export default defineConfig(({ mode }) => {
     }
     return `${url.origin}/`;
   };
-  const siteUrl = origin(env.SITE_URL);
+  const siteUrl = origin(env.SITE_URL ?? (mode === 'production' ? PRODUCTION_SITE_URL : undefined));
   const imageUrl = siteUrl ? new URL('og-card.png', siteUrl).href : '/og-card.png';
 
   return {

@@ -40,4 +40,4 @@ OG 生成指示の要点: 選定済みパンプキンの形と片側が上がっ
 - [Vite HTML transform hook](https://vite.dev/guide/api-plugin.html#transformindexhtml)
 - [Vite env files](https://vite.dev/guide/env-and-mode.html#env-files)
 
-公開 URL は `https://jack-o-gen.shunyakoide.com`。`.env.production` の `SITE_URL` をビルド時に使用する（未設定時は OG 画像を相対 URL で参照し、canonical は出さない）。
+公開 URL は `https://jack-o-gen.shunyakoide.com`。`vite.config.ts` の `PRODUCTION_SITE_URL` を本番ビルドで使用する（`SITE_URL` で上書き可。空なら OG 画像を相対 URL で参照し、canonical は出さない）。

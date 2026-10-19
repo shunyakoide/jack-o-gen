@@ -44,7 +44,7 @@ Cloudflare Workers の静的アセットとして https://jack-o-gen.shunyakoide
 npm run deploy     # ビルドして wrangler deploy
 ```
 
-ドメインは `wrangler.jsonc` の `routes`、OG 用の公開 URL は `.env.production` の `SITE_URL` で設定しています。フォークする場合は両方を自分のドメインに変えてください。
+ドメインは `wrangler.jsonc` の `routes`、OG 用の公開 URL は `vite.config.ts` の `PRODUCTION_SITE_URL` で設定しています。フォークする場合は、`routes` を自分のドメインに変え、`.env.local` に `SITE_URL` を書いてください(`.env*` は git 管理しません)。
 `public/_headers` で WASM の Content-Type とアセットのキャッシュを設定しています。
 
 ### ロゴ・共有カード
@@ -52,8 +52,8 @@ npm run deploy     # ビルドして wrangler deploy
 採用したパンプキンをヘッダーとファビコンに使用しています。画像一覧と元画像は
 [`design/brand/README.md`](design/brand/README.md) にまとめています。
 
-ビルド時に `SITE_URL` から OG 画像・X カード画像の絶対 URL、`og:url`、canonical を HTML に埋め込みます。
-`SITE_URL` が空のときは画像を相対 URL で参照し、`og:url` と canonical は出力しません。
+ビルド時に公開 URL(`SITE_URL`、未設定なら本番ビルドでは `PRODUCTION_SITE_URL`)から OG 画像・X カード画像の絶対 URL、`og:url`、canonical を HTML に埋め込みます。
+`SITE_URL` を空にしたとき(と開発時)は画像を相対 URL で参照し、`og:url` と canonical は出力しません。
 SNS 上での表示確認は公開後に行ってください。
 
 ## 構成

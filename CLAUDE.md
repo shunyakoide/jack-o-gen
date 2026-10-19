@@ -1,7 +1,7 @@
 # Jack-o-Gen
 
 Browser-only parametric pumpkin (jack-o'-lantern) generator that exports STL for 3D printing.
-Target: any FDM printer, 0.4 mm nozzle, PLA (fit tolerances were calibrated on a Bambu Lab A1). No bed-size check: users have different printers, so size is never limited or warned about. Public launch ~10/24. Deploy: Cloudflare Workers static assets at https://jack-o-gen.shunyakoide.com (`npm run deploy` = build + `wrangler deploy`; `SITE_URL` in `.env.production`).
+Target: any FDM printer, 0.4 mm nozzle, PLA (fit tolerances were calibrated on a Bambu Lab A1). No bed-size check: users have different printers, so size is never limited or warned about. Public launch ~10/24. Deploy: Cloudflare Workers static assets at https://jack-o-gen.shunyakoide.com (`npm run deploy` = build + `wrangler deploy`; `PRODUCTION_SITE_URL` in `vite.config.ts`; `.env*` is gitignored, so never put secrets in committed config).
 
 ## Commands
 - `npm run dev` — Vite dev server (http://localhost:5173)

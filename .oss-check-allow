@@ -1,0 +1,3 @@
+# oss-publish-check の除外リスト(grep -E、1行1パターン)
+# 52350d4 で追加した .env.production は公開 URL(SITE_URL)だけ。今は vite.config.ts に移して削除済み
+^52350d4 \.env\.production$

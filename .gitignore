@@ -6,3 +6,7 @@ dist
 
 # Claude Code のローカル作業領域（計画メモ・起動設定・worktree）
 .claude/
+
+# Local env files may hold secrets; only the template is tracked
+.env*
+!.env.example
