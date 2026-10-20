@@ -72,7 +72,7 @@ describe('蓋付き', () => {
 
   it('URL で往復する', () => {
     const q = encodeParams({ ...defaultParams(), opening: 'lid' });
-    expect(q).toBe('o=l');
+    expect(q).toBe('v=1&o=l');
     expect(decodeParams(q)!.opening).toBe('lid');
     expect(decodeParams('D=150')!.opening).toBe('base');
   });

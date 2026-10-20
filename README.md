@@ -4,7 +4,7 @@
 
 Jack-o-Gen is a browser-only jack-o'-lantern designer that exports STL files for 3D printing. Everything runs on your machine; there is no server.
 
-**How to use.** Pick a preset, shape the body, ribs, and stem on the Shape tab, then drag the eyes, nose, and mouth on the Face tab. On the Print tab, set the wall thickness and LED opening (or switch to a lid on top, which keeps the bottom closed so it also works as a candy bowl), choose an attached or plug-in stem, check the print warnings, and download the STL (or a 3MF when the face is printed in a second color instead of cut out). The bulb button on the preview shows the pumpkin lit from inside. The Share button copies a link that restores the design. Light it with an LED tea light only, never a candle: PLA softens around 60 °C.
+**How to use.** Pick a preset, shape the body, ribs, and stem on the Shape tab, then drag the eyes, nose, and mouth on the Face tab. On the Print tab, set the wall thickness and LED opening (or switch to a lid on top, which keeps the bottom closed so it also works as a candy bowl), choose an attached or plug-in stem, check the print warnings, and download the STL (or a 3MF when the face is printed in a second color instead of cut out). The bulb button on the preview shows the pumpkin lit from inside. The Share button copies a link that restores the design, and your last design comes back when you reopen the site. Light it with an LED tea light only, never a candle: PLA softens around 60 °C.
 
 Tuned for a 0.4 mm nozzle and PLA. There is no size limit, so it works with any bed size.
 

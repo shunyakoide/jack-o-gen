@@ -110,12 +110,13 @@ export interface NumDef {
   /** UI に出さない（プリセット・URL からのみ変わる） */
   hidden?: boolean;
   int?: boolean;
-  /** max はスライダーの端だけで、数値入力・URL ではそれより大きくできる */
-  openMax?: boolean;
+  /** max はスライダーの端だけで、数値入力・URL ではこの値まで大きくできる（ブラウザが固まらない範囲） */
+  openMax?: number;
 }
 
+// q は共有 URL のキー。公開済みのリンクが壊れるので、名前を変えたり消したりしない。既定値 def を変えるときは url.ts の URL_VERSION を上げる
 export const NUM_DEFS: NumDef[] = [
-  { key: 'diameter', q: 'D', group: 'body', min: 60, max: 240, step: 1, def: 120, unit: 'mm', openMax: true },
+  { key: 'diameter', q: 'D', group: 'body', min: 60, max: 240, step: 1, def: 120, unit: 'mm', openMax: 1000 },
   { key: 'height', q: 'H', group: 'body', min: 0.8, max: 2.6, step: 0.01, def: 1.4 },
   { key: 'wobble', q: 'wb', group: 'body', min: 0, max: 0.12, step: 0.005, def: 0.01, advanced: true },
   { key: 'superE', q: 'e', group: 'body', min: 1.6, max: 4, step: 0.05, def: 2.3, advanced: true },
@@ -174,7 +175,7 @@ export function defaultParams(): Params {
 
 export function clampNum(def: NumDef, v: number): number {
   if (!Number.isFinite(v)) return def.def;
-  let x = Math.max(def.min, def.openMax ? v : Math.min(def.max, v));
+  let x = Math.max(def.min, Math.min(def.openMax ?? def.max, v));
   if (def.int) x = Math.round(x);
   return x;
 }

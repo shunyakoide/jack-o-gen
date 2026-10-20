@@ -23,7 +23,7 @@ import {
 } from '../model/params';
 import { PRESET_CARDS } from './presets';
 import { STEM_STYLES } from './stems';
-import { decodeParams } from './url';
+import { AUTOSAVE_KEY, decodeParams } from './url';
 
 interface State {
   params: Params;
@@ -65,10 +65,17 @@ interface State {
 
 export type PartPatch = Partial<FacePart> & { mirror?: boolean };
 
+/** 共有リンクがあればそれを、なければ前回のデザイン（自動保存）を、どちらもなければ既定の形 */
 function initialParams(): Params {
   if (typeof location !== 'undefined') {
     const p = decodeParams(location.search);
     if (p) return p;
+    try {
+      const saved = decodeParams(localStorage.getItem(AUTOSAVE_KEY) ?? '');
+      if (saved) return saved;
+    } catch {
+      // localStorage が使えなければ既定の形から
+    }
   }
   return defaultParams();
 }

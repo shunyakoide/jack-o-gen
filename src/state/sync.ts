@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { callWorker } from '../worker/client';
 import { useStore } from './store';
-import { encodeParams } from './url';
+import { AUTOSAVE_KEY, encodeParams } from './url';
 import type { Params } from '../model/params';
 import type { Quality } from '../geometry/build';
 
@@ -69,8 +69,15 @@ export function useUrlSync() {
       clearTimeout(timer);
       timer = setTimeout(() => {
         history.replaceState(null, '', `${location.pathname}${search(p)}`);
+        try {
+          localStorage.setItem(AUTOSAVE_KEY, encodeParams(p));
+        } catch {
+          // プライベートモードなどで保存できなくても URL は更新済み
+        }
       }, 250);
     };
+    // 自動保存から戻したときも、アドレス欄をそのデザインのリンクにしておく（保存は編集したときだけ）
+    history.replaceState(null, '', `${location.pathname}${search(useStore.getState().params)}`);
     const unsub = useStore.subscribe((s, prev) => {
       if (s.params !== prev.params) write(s.params);
     });

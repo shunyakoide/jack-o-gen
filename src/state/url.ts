@@ -59,16 +59,38 @@ function decodeDrawn(s: string): DrawnPart | null {
   const pts: [number, number][] = [];
   for (let i = 0; i + 1 < v.length && pts.length < MAX_PTS; i += 2) pts.push([v[i], v[i + 1]]);
   const line = Math.min(20, Math.max(0, n[6]));
-  if (pts.length < (line > 0 ? 2 : 3)) return null;
+  if (pts.length < (line > 0 ? 2 : 3) || degenerate(pts, line)) return null;
   const c = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
   return { x: c(n[0], -120, 120), y: c(n[1], -90, 90), w: c(n[2], 1, 120), h: c(n[3], 1, 120), rot: c(n[4], -180, 180), mirror: n[5] === 1, line, pts };
+}
+
+/** 面なら面積、線なら長さがほぼ 0 の形（点が重なっただけ）は形にならないので捨てる */
+function degenerate(pts: [number, number][], line: number): boolean {
+  if (line > 0) return Math.max(...pts.map(([x]) => x)) - Math.min(...pts.map(([x]) => x)) < 0.5 && Math.max(...pts.map(([, y]) => y)) - Math.min(...pts.map(([, y]) => y)) < 0.5;
+  let a = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const [ax, ay] = pts[i];
+    const [bx, by] = pts[(i + 1) % pts.length];
+    a += ax * by - bx * ay;
+  }
+  return Math.abs(a / 2) < 0.05;
 }
 
 const encodeFace = (f: FaceParams) => [f.symmetric ? '1' : '0', ...PART_KEYS.map((k) => encodePart(f[k]))].join('_');
 const DEFAULT_FACE = encodeFace(defaultFace());
 
+/**
+ * URL の形式の版。省いた項目は「この版の既定値」の意味になるので、params.ts の既定値や顔の既定を変えるときは
+ * 版を上げ、decodeParams で古い版のリンクに当時の既定値を補う（tests/url.test.ts が既定値の変更を検出する）
+ */
+export const URL_VERSION = 1;
+
+/** 最後のデザインを URL と同じ形で保存する localStorage のキー（共有リンクなしで開き直したときに戻す） */
+export const AUTOSAVE_KEY = 'jack-o-gen:last';
+
 export function encodeParams(p: Params): string {
   const q = new URLSearchParams();
+  q.set('v', String(URL_VERSION));
   // 既定値と同じ項目は省いて URL を短くする
   for (const d of NUM_DEFS) if (fmt(p[d.key]) !== fmt(d.def)) q.set(d.q, fmt(p[d.key]));
   if (p.stemAttach === 'peg') q.set('a', 'p');
@@ -77,7 +99,8 @@ export function encodeParams(p: Params): string {
   const f = encodeFace(p.face);
   if (f !== DEFAULT_FACE) q.set('f', f);
   if (p.face.drawn.length) q.set('d', p.face.drawn.map(encodeDrawn).join('*'));
-  return q.toString();
+  // すべて既定値なら何も書かない（版だけの URL にしない）
+  return [...q.keys()].length > 1 ? q.toString() : '';
 }
 
 export function decodeParams(search: string): Params | null {
