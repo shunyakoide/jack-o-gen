@@ -58,12 +58,10 @@ h1, h3 { margin: 0; }
 .brand-mark { display: block; width: 38px; height: auto; flex: none; }
 .topbar-actions { display: flex; gap: 8px; align-items: center; }
 /* 上部バーの操作はすべて同じ高さ・同じ面で揃える */
-.topbar-actions > .ghost, .topbar-actions > .badge, .topbar-actions > .cta, .topbar-util > * { height: 34px; }
+.topbar-actions > .ghost, .topbar-actions > .badge, .topbar-actions > .cta { height: 34px; }
 .topbar-actions > .ghost { display: inline-flex; align-items: center; gap: 6px; }
 .topbar-actions svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.topbar-util { display: flex; gap: 4px; padding: 0 8px; border-inline: 1px solid var(--hairline); }
-.topbar-util > * { background: none; color: var(--muted); }
-.topbar-util > :hover { color: var(--text); }
+
 .topbar h1, .topbar-actions > * { white-space: nowrap; }
 
 /* ボタン共通の手触り */
@@ -126,6 +124,16 @@ button.badge:hover { background: var(--surface-hover); }
   padding: 4px 9px; border-radius: 6px; pointer-events: none;
 }
 .viewer-status:empty { display: none; }
+.stage-links {
+  position: absolute; right: 12px; bottom: 10px; z-index: 1; display: flex; align-items: center; gap: 2px;
+  background: rgba(20, 15, 25, 0.6); backdrop-filter: blur(6px); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 6px;
+}
+.stage-links > * {
+  display: inline-grid; place-items: center; min-width: 30px; height: 26px; padding: 0 8px; font-size: 12px; color: var(--muted);
+  background: none; border: 0; border-radius: 5px; text-decoration: none; transition: color 0.2s var(--ease), background-color 0.2s var(--ease);
+}
+.stage-links > :hover { color: var(--text); background: var(--surface-hover); }
+.stage-links svg { width: 15px; height: 15px; fill: currentColor; }
 .checks.floating {
   position: absolute; top: 12px; right: 12px; z-index: 2; width: min(300px, calc(100% - 24px)); max-height: calc(100% - 60px); overflow-y: auto;
 }
@@ -296,9 +304,7 @@ input[type='range']:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(
 .icon-btn:not(:disabled):hover { border-color: var(--accent); background: var(--panel-3); }
 .icon-btn:not(:disabled):active { transform: scale(0.94); }
 .icon-btn:disabled { opacity: 0.35; }
-.icon-btn.github { width: 34px; border-color: transparent; backdrop-filter: none; }
-.icon-btn.github:hover { background: var(--surface-hover); border-color: transparent; }
-.icon-btn.github svg { width: 18px; height: 18px; fill: currentColor; stroke: none; }
+
 .icon-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .shape-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
 .shape-card {
@@ -390,10 +396,10 @@ input[type='range']:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(
   .topbar-actions { gap: 6px; }
   /* 狭い幅ではボタンをアイコンだけにして上部バーを 1 行に収める（文字は読み上げ用に残す） */
   .btn-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .topbar-actions > .ghost, .topbar-actions > .badge, .topbar-actions > .cta, .topbar-util > * { height: 44px; }
+  .topbar-actions > .ghost, .topbar-actions > .badge, .topbar-actions > .cta { height: 44px; }
+  .stage-links { right: 8px; bottom: 8px; }
+  .stage-links > * { min-width: 44px; height: 44px; }
   .topbar-actions > .ghost, .primary.cta { min-width: 44px; justify-content: center; padding: 6px 10px; }
-  .topbar-util { gap: 6px; padding: 0; border: 0; }
-  .icon-btn.github { width: 44px; }
   /* 出力タブのダウンロードボタンはスクロールせずに押せるようシート下端に貼り付ける。
      .export を contents にして、sticky の範囲をタブ全体（.tab-body）に広げる。
      sticky の基準はスクロール領域の padding 内側なので、下 padding をボタン周りの塗り（12px）以下にして隙間から中身が覗かないようにする */
@@ -403,11 +409,6 @@ input[type='range']:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(
 }
 
 /* 上部バーに 5 つ並ぶとスマホで 2 行になるので、バッジは色の点だけにする（文字は読み上げ用に残す） */
-/* スマホ幅ではロゴの文字も隠してかぼちゃの印だけにする（文字は読み上げ用に残す） */
-@media (max-width: 480px) {
-  .wordmark { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-}
-
 @media (max-width: 420px) {
   .badge { min-width: 44px; justify-content: center; }
   .badge-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -424,7 +425,6 @@ input[type='range']:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(
 .file-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .file-list li { display: flex; justify-content: space-between; gap: 8px; }
 .file-list .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ghost.lang { font-size: 12px; padding: 5px 9px; }
 .stem-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .stem-card {
   display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 4px; font-size: 13px; font-weight: 500;
