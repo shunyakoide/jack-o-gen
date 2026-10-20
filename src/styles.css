@@ -57,6 +57,13 @@ h1, h3 { margin: 0; }
 }
 .brand-mark { display: block; width: 38px; height: auto; flex: none; }
 .topbar-actions { display: flex; gap: 8px; align-items: center; }
+/* 上部バーの操作はすべて同じ高さ・同じ面で揃える */
+.topbar-actions > .ghost, .topbar-actions > .badge, .topbar-actions > .cta, .topbar-util > * { height: 34px; }
+.topbar-actions > .ghost { display: inline-flex; align-items: center; gap: 6px; }
+.topbar-actions svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.topbar-util { display: flex; gap: 4px; padding: 0 8px; border-inline: 1px solid var(--hairline); }
+.topbar-util > * { background: none; color: var(--muted); }
+.topbar-util > :hover { color: var(--text); }
 .topbar h1, .topbar-actions > * { white-space: nowrap; }
 
 /* ボタン共通の手触り */
@@ -79,7 +86,6 @@ h1, h3 { margin: 0; }
 .primary:not(:disabled):hover { box-shadow: 0 1px 0 rgba(255, 220, 170, 0.35) inset, 0 8px 28px -4px var(--glow); }
 .modal-actions .primary { width: auto; padding: 8px 14px; }
 .primary.cta { width: auto; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-weight: 600; }
-.cta svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 
 .badge {
   display: inline-flex; align-items: center; gap: 6px; border-radius: var(--radius-sm); padding: 5px 11px;
@@ -290,7 +296,8 @@ input[type='range']:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(
 .icon-btn:not(:disabled):hover { border-color: var(--accent); background: var(--panel-3); }
 .icon-btn:not(:disabled):active { transform: scale(0.94); }
 .icon-btn:disabled { opacity: 0.35; }
-.icon-btn.github { color: inherit; }
+.icon-btn.github { width: 34px; border-color: transparent; backdrop-filter: none; }
+.icon-btn.github:hover { background: var(--surface-hover); border-color: transparent; }
 .icon-btn.github svg { width: 18px; height: 18px; fill: currentColor; stroke: none; }
 .icon-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .shape-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
@@ -381,10 +388,12 @@ input[type='range']:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(
   .topbar h1 { font-size: 20px; gap: 6px; }
   .brand-mark { width: 30px; }
   .topbar-actions { gap: 6px; }
-  .topbar-actions .ghost { padding: 6px 9px; }
-  /* 狭い幅ではアイコンだけにして上部バーを 1 行に収める */
-  .cta-label { display: none; }
-  .primary.cta { min-width: 44px; justify-content: center; padding: 6px 10px; }
+  /* 狭い幅ではボタンをアイコンだけにして上部バーを 1 行に収める（文字は読み上げ用に残す） */
+  .btn-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .topbar-actions > .ghost, .topbar-actions > .badge, .topbar-actions > .cta, .topbar-util > * { height: 44px; }
+  .topbar-actions > .ghost, .primary.cta { min-width: 44px; justify-content: center; padding: 6px 10px; }
+  .topbar-util { gap: 6px; padding: 0; border: 0; }
+  .icon-btn.github { width: 44px; }
   /* 出力タブのダウンロードボタンはスクロールせずに押せるようシート下端に貼り付ける。
      .export を contents にして、sticky の範囲をタブ全体（.tab-body）に広げる。
      sticky の基準はスクロール領域の padding 内側なので、下 padding をボタン周りの塗り（12px）以下にして隙間から中身が覗かないようにする */
@@ -394,6 +403,11 @@ input[type='range']:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(
 }
 
 /* 上部バーに 5 つ並ぶとスマホで 2 行になるので、バッジは色の点だけにする（文字は読み上げ用に残す） */
+/* スマホ幅ではロゴの文字も隠してかぼちゃの印だけにする（文字は読み上げ用に残す） */
+@media (max-width: 480px) {
+  .wordmark { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
 @media (max-width: 420px) {
   .badge { min-width: 44px; justify-content: center; }
   .badge-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
