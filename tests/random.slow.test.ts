@@ -6,12 +6,13 @@ import { PRESET_CARDS } from '../src/state/presets';
 const wasm = await loadManifold();
 
 describe('おまかせ', () => {
-  it('ランダム 20 形状がすべて manifold', () => {
+  it('ランダム 20 形状がすべて manifold で、警告が出ない', () => {
     const random = PRESET_CARDS.find((c) => c.id === 'random')!;
     for (let s = 1; s <= 20; s++) {
       const r = buildPumpkin(wasm, random.make(s * 7919), 'preview');
       const m = r.checks.find((c) => c.id === 'manifold')!;
       expect(m.level, `seed ${s}: ${m.detail}`).toBe('green');
+      expect(r.checks.filter((c) => c.level !== 'green').map((c) => `${c.id}:${c.detail}`), `seed ${s}`).toEqual([]);
     }
   });
 });

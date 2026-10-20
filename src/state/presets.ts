@@ -41,7 +41,7 @@ export const PRESET_CARDS: PresetCard[] = [
       face: withFace({
         eyeL: { preset: 'happy', x: -26, y: 7, w: 22, h: 13, rot: 0 },
         nose: { preset: 'none', x: 0, y: 0, w: 10, h: 10, rot: 0 },
-        mouth: { preset: 'smile', x: 0, y: -10, w: 56, h: 16, rot: 0 },
+        mouth: { preset: 'smile', x: 0, y: -13, w: 56, h: 16, rot: 0 },
       }),
     }),
   },
@@ -79,11 +79,17 @@ export const PRESET_CARDS: PresetCard[] = [
       for (const d of NUM_DEFS) (out as unknown as Record<string, number>)[d.key] = clampNum(d, out[d.key]);
       const eye = pick(['triangle', 'round', 'angry', 'happy', 'pupil', 'diamond']);
       const ew = half(16, 24);
-      out.face = withFace({
-        eyeL: { preset: eye, x: -half(20, 27), y: half(10, 18), w: ew, h: eye === 'happy' ? Math.round(ew * 1.2) / 2 : half(16, 24), rot: 0 },
-        nose: { preset: pick(['triangle', 'down', 'round', 'none']), x: 0, y: half(-4, 2), w: half(9, 13), h: half(8, 12), rot: 0 },
-        mouth: { preset: pick(['jagged', 'smile', 'fangs', 'grin']), x: 0, y: half(-24, -16), w: half(48, 66), h: half(18, 26), rot: 0 },
-      });
+      const eyeL = { preset: eye, x: -half(20, 27), y: half(10, 18), w: ew, h: eye === 'happy' ? Math.round(ew * 1.2) / 2 : half(16, 24), rot: 0 };
+      const nose = { preset: pick(['triangle', 'down', 'round', 'none']), x: 0, y: half(-4, 2), w: half(9, 13), h: half(8, 12), rot: 0 };
+      const mouthPreset = pick(['jagged', 'smile', 'fangs', 'grin']);
+      const mw = half(48, 66);
+      // 牙・ギザギザの口は縦長にすると歯が 2 mm より細くなる（高さ／幅の上限）
+      const maxAspect: Record<string, number> = { fangs: 0.38, jagged: 0.44 };
+      const mh = Math.min(half(18, 26), Math.floor(mw * (maxAspect[mouthPreset] ?? 1) * 2) / 2);
+      // 口の上端は目と鼻の下端から 7 mm 以上離す（近いと間の壁が 3 mm を切って折れやすい）
+      const above = Math.min(eyeL.y - eyeL.h / 2, nose.preset === 'none' ? Infinity : nose.y - nose.h / 2);
+      const my = Math.min(half(-24, -16), Math.floor((above - 7 - mh / 2) * 2) / 2);
+      out.face = withFace({ eyeL, nose, mouth: { preset: mouthPreset, x: 0, y: my, w: mw, h: mh, rot: 0 } });
       return out;
     },
   },

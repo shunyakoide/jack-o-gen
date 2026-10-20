@@ -81,12 +81,11 @@ describe('buildPumpkin', () => {
     });
   }
   for (const card of PRESET_CARDS) {
-    it(`${card.id}は単一の manifold`, () => {
+    it(`${card.id}は単一の manifold で、選んだ直後に警告が出ない`, () => {
       const { r, bad } = summary(card.make(42));
-      if (bad.length) console.log(card.id, bad);
       const m = r.checks.find((c) => c.id === 'manifold')!;
       expect(m.level, m.detail).toBe('green');
-      expect(r.level).not.toBe('red');
+      expect(bad).toEqual([]);
     });
   }
 
