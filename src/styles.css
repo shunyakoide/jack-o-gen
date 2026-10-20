@@ -290,6 +290,8 @@ input[type='range']:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(
 .icon-btn:not(:disabled):hover { border-color: var(--accent); background: var(--panel-3); }
 .icon-btn:not(:disabled):active { transform: scale(0.94); }
 .icon-btn:disabled { opacity: 0.35; }
+.icon-btn.github { color: inherit; }
+.icon-btn.github svg { width: 18px; height: 18px; fill: currentColor; stroke: none; }
 .icon-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .shape-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
 .shape-card {
