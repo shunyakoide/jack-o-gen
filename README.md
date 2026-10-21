@@ -26,11 +26,11 @@
   </tr>
 </table>
 
-Everything runs on your machine; there is no server. Tuned for a 0.4 mm nozzle and PLA. There is no size limit, so it works with any bed size.
+Everything runs on your machine; there is no server. Tuned for a 0.4 mm nozzle and PLA. There is no bed-size check, so pick a diameter that fits your printer (the slider goes from 60 to 240 mm, and you can type up to 1 m).
 
 ## How to use
 
-Pick a preset, shape the body, ribs, and stem on the Shape tab, then drag the eyes, nose, and mouth on the Face tab. On the Print tab, set the wall thickness and LED opening (or switch to a lid on top, which keeps the bottom closed so it also works as a candy bowl), choose an attached or plug-in stem, check the print warnings, and download the STL (or a 3MF when the face is printed in a second color instead of cut out). The bulb button on the preview shows the pumpkin lit from inside. The Share button copies a link that restores the design, and your last design comes back when you reopen the site.
+Pick a preset, shape the body, ribs, and stem on the Shape tab, then drag the eyes, nose, and mouth on the Face tab. On the Print tab, set the wall thickness and LED opening (or switch to a lid on top, which keeps the bottom closed so it also works as a candy bowl), choose an attached or plug-in stem, check the print warnings, and download the STL (a ZIP of STLs when the stem or lid is a separate part, or a 3MF when the face is printed in a second color instead of cut out). The bulb button on the preview shows the pumpkin lit from inside. The Share button copies a link that restores the design, and your last design comes back when you reopen the site.
 
 Light it with an LED tea light only, never a candle: PLA softens around 60 °C.
 
@@ -74,12 +74,14 @@ src/
     build.ts           CSG (union / difference), hollowing, carving, lid and lip
     checks.ts          printability checks
     layout.ts          bed layout on the Print tab
+    manifold.ts        loads manifold-3d (WASM) and frees its objects
+    rng.ts             seeded random numbers and noise
     stl.ts             binary STL
     threemf.ts         3MF for the two-color face
     zip.ts             uncompressed ZIP bundling the STLs
   worker/              Web Worker (comlink)
   i18n/                English and Japanese UI strings
-  state/               zustand store, URL sync, presets
+  state/               zustand store, URL sync, presets, stem styles
   preview/Viewer.tsx   3D preview
   ui/                  panels, tabs, face editor
 tests/                 geometry tests
@@ -91,8 +93,8 @@ tests/                 geometry tests
 
 - `P(φ)`: a superellipsoid with separate upper and lower heights × an egg term `(1 + k·cosφ)` × a dip around the stem
 - `u = frac(N·(θ + τ·h(φ)) / 2π)`, `G(u) = 1 − |cos(π·u^skew)|^p`, `W(φ) = sin(φ)^q`
-- Seeded per-rib variation in width and depth
-- On each meridian, the part below the widest point is clamped to `|Δρ| ≤ Δz·tan45°`, and the bottom is cut flat at the height where the contact diameter is at least 35% of the widest diameter
+- Seeded per-rib variation in width and depth, plus an optional low-frequency wobble (zero at the poles)
+- On each meridian, the part below the widest point is clamped to `|Δρ| ≤ Δz·tan45°`, and the bottom is cut flat where the contact diameter reaches the Base width ratio of the widest diameter (45% by default, 35–70%; widened if the LED opening needs more room)
 
 ## Notes
 
