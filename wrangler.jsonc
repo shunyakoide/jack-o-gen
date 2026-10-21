@@ -1,9 +1,0 @@
-{
-  "name": "jack-o-gen",
-  "compatibility_date": "2026-10-01",
-  "workers_dev": false,
-  "preview_urls": false,
-  // 作者のドメイン。フォークでデプロイするときはこの行を消すか自分のドメインにする
-  "routes": [{ "pattern": "jack-o-gen.shunyakoide.com", "custom_domain": true }],
-  "assets": { "directory": "./dist" }
-}
