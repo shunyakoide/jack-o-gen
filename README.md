@@ -1,5 +1,20 @@
 # Jack-o-Gen
 
+**[Open Jack-o-Gen](https://jack-o-gen.shunyakoide.com)**
+
+<img src="docs/images/shape.webp" width="800" alt="The Shape tab: presets, body and rib sliders, stem styles, and a 3D preview of a carved pumpkin">
+
+<table>
+  <tr>
+    <td><img src="docs/images/face.webp" width="400" alt="The Face tab: an unwrapped face editor with draggable triangle eyes, nose and mouth"></td>
+    <td><img src="docs/images/print.webp" width="400" alt="The Print tab: wall thickness, LED opening, lid and stem options, and the Download STL button"></td>
+  </tr>
+  <tr>
+    <td align="center">Face</td>
+    <td align="center">Print</td>
+  </tr>
+</table>
+
 ## English
 
 Jack-o-Gen is a browser-only jack-o'-lantern designer that exports STL files for 3D printing. Everything runs on your machine; there is no server.
@@ -38,14 +53,9 @@ npm run build      # 型チェック＋本番ビルド（dist/）
 
 ## デプロイ
 
-Cloudflare Workers の静的アセットとして https://jack-o-gen.shunyakoide.com に公開しています（Worker スクリプトなし、`dist/` をそのまま配信）。
+GitHub Pages で https://jack-o-gen.shunyakoide.com に公開しています（`dist/` をそのまま配信）。main に push すると、CI のテストが通った後に `pages` ジョブがビルドして公開します。
 
-```bash
-npm run deploy     # ビルドして wrangler deploy
-```
-
-ドメインは `wrangler.jsonc` の `routes`、OG 用の公開 URL は `vite.config.ts` の `PRODUCTION_SITE_URL` で設定しています。フォークする場合は、`routes` を自分のドメインに変え、`.env.local` に `SITE_URL` を書いてください(`.env*` は git 管理しません)。
-`public/_headers` で WASM の Content-Type とアセットのキャッシュを設定しています。
+OG 用の公開 URL は `vite.config.ts` の `PRODUCTION_SITE_URL` で設定しています。フォークする場合は `SITE_URL` を自分の公開 URL にしてください(ローカルでは `.env.local`。`.env*` は git 管理しません)。ビルドはルート(`/`)配信が前提なので、独自ドメインなしの `<user>.github.io/jack-o-gen/` に出すときは Vite の `base` も合わせて変えてください。
 
 ### ロゴ・共有カード
 
