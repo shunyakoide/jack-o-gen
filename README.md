@@ -1,6 +1,17 @@
-# Jack-o-Gen
+<p align="center">
+  <img src="public/brand/pumpkin.png" width="120" alt="">
+</p>
 
-**[Open Jack-o-Gen](https://jack-o-gen.shunyakoide.com)**
+<h1 align="center">Jack-o-Gen</h1>
+
+<p align="center">
+  Design a jack-o'-lantern in your browser and download it as an STL for 3D printing.
+</p>
+
+<p align="center">
+  <a href="https://jack-o-gen.shunyakoide.com"><strong>Open the app</strong></a> ·
+  <a href="README.ja.md">日本語</a>
+</p>
 
 <img src="docs/images/shape.webp" width="800" alt="The Shape tab: presets, body and rib sliders, stem styles, and a 3D preview of a carved pumpkin">
 
@@ -15,15 +26,17 @@
   </tr>
 </table>
 
-## English
+Everything runs on your machine; there is no server. Tuned for a 0.4 mm nozzle and PLA. There is no bed-size check, so pick a diameter that fits your printer (the slider goes from 60 to 240 mm, and you can type up to 1 m).
 
-Jack-o-Gen is a browser-only jack-o'-lantern designer that exports STL files for 3D printing. Everything runs on your machine; there is no server.
+## How to use
 
-**How to use.** Pick a preset, shape the body, ribs, and stem on the Shape tab, then drag the eyes, nose, and mouth on the Face tab. On the Print tab, set the wall thickness and LED opening (or switch to a lid on top, which keeps the bottom closed so it also works as a candy bowl), choose an attached or plug-in stem, check the print warnings, and download the STL (or a 3MF when the face is printed in a second color instead of cut out). The bulb button on the preview shows the pumpkin lit from inside. The Share button copies a link that restores the design, and your last design comes back when you reopen the site. Light it with an LED tea light only, never a candle: PLA softens around 60 °C.
+Pick a preset, shape the body, ribs, and stem on the Shape tab, then drag the eyes, nose, and mouth on the Face tab. On the Print tab, set the wall thickness and LED opening (or switch to a lid on top, which keeps the bottom closed so it also works as a candy bowl), choose an attached or plug-in stem, check the print warnings, and download the STL (a ZIP of STLs when the stem or lid is a separate part, or a 3MF when the face is printed in a second color instead of cut out). The bulb button on the preview shows the pumpkin lit from inside. The Share button copies a link that restores the design, and your last design comes back when you reopen the site.
 
-Tuned for a 0.4 mm nozzle and PLA. There is no size limit, so it works with any bed size.
+Light it with an LED tea light only, never a candle: PLA softens around 60 °C.
 
-**Development.** Requires Node 22.
+## Development
+
+Requires Node 22.
 
 ```sh
 npm install
@@ -33,77 +46,63 @@ npm run test:fast  # skips the export-resolution and random-shape suites
 npm run build      # type check and production build into dist/
 ```
 
-Released under the MIT License (see `LICENSE`).
+Stack: React + TypeScript + Vite, three / @react-three/fiber / drei, manifold-3d (WASM) in a Web Worker (comlink), zustand.
 
-## 日本語
+## Deployment
 
-3Dプリント用のジャック・オー・ランタンを、ブラウザだけで設計して STL を書き出す Web アプリです。
+The site is served from GitHub Pages at https://jack-o-gen.shunyakoide.com (`dist/` as is). Every push to `main` runs the tests, then the `pages` job in CI builds and publishes.
 
-- 想定：ノズル 0.4mm・PLA（造形範囲の制限なし。プリンターの大きさに合わせて直径を決めてください）
-- 技術：React + TypeScript + Vite / three・@react-three/fiber・drei / manifold-3d（WASM）/ Web Worker（comlink）/ zustand
+The public origin used for og:image, og:url and canonical is `PRODUCTION_SITE_URL` in `vite.config.ts`. For a fork, set `SITE_URL` to your own origin (`.env.local` locally; `.env*` files are not tracked). The build assumes it is served from the root (`/`), so to publish at `<user>.github.io/jack-o-gen/` without a custom domain, change Vite's `base` as well.
 
-## 開発
+### Logo and share card
 
-```sh
-npm install
-npm run dev        # 開発サーバー
-npm test           # ジオメトリのテスト（vitest、Node 上で manifold-3d を実行）
-npm run build      # 型チェック＋本番ビルド（dist/）
-```
+The pumpkin mark is used in the header and the favicons. The asset list and source images are in [`design/brand/README.md`](design/brand/README.md).
 
-## デプロイ
+At build time the public origin (`SITE_URL`, or `PRODUCTION_SITE_URL` for production builds when unset) is used to write absolute URLs for the OG and X card images, `og:url`, and canonical into the HTML. With `SITE_URL` empty (and in development) the image is referenced by a relative URL, and `og:url` and canonical are left out.
 
-GitHub Pages で https://jack-o-gen.shunyakoide.com に公開しています（`dist/` をそのまま配信）。main に push すると、CI のテストが通った後に `pages` ジョブがビルドして公開します。
-
-OG 用の公開 URL は `vite.config.ts` の `PRODUCTION_SITE_URL` で設定しています。フォークする場合は `SITE_URL` を自分の公開 URL にしてください(ローカルでは `.env.local`。`.env*` は git 管理しません)。ビルドはルート(`/`)配信が前提なので、独自ドメインなしの `<user>.github.io/jack-o-gen/` に出すときは Vite の `base` も合わせて変えてください。
-
-### ロゴ・共有カード
-
-採用したパンプキンをヘッダーとファビコンに使用しています。画像一覧と元画像は
-[`design/brand/README.md`](design/brand/README.md) にまとめています。
-
-ビルド時に公開 URL(`SITE_URL`、未設定なら本番ビルドでは `PRODUCTION_SITE_URL`)から OG 画像・X カード画像の絶対 URL、`og:url`、canonical を HTML に埋め込みます。
-`SITE_URL` を空にしたとき(と開発時)は画像を相対 URL で参照し、`og:url` と canonical は出力しません。
-SNS 上での表示確認は公開後に行ってください。
-
-## 構成
+## Layout
 
 ```
 src/
-  model/params.ts      パラメータの型・初期値・範囲（UI・URL・ジオメトリ共通）
-  geometry/            DOM に依存しない形状生成（Worker と vitest の両方で動く）
-    body.ts            外形 r(θ,φ)、45°クランプ、底面カット、経緯度グリッド、内側オフセット
-    stem.ts            ヘタのスイープ
-    face/presets.ts    顔パーツの 2D プリセット
-    face/draw.ts       手描きの線を閉じた多角形にする
-    face/layout.ts     尖頭アーチ化・島のブリッジ・2D チェック
-    build.ts           CSG（union／difference）、中空化、彫り込み、蓋とリップ
-    checks.ts          プリント適性チェック
-    layout.ts          Print タブのベッド上の配置
-    stl.ts             バイナリ STL
-    threemf.ts         色分け用の 3MF
-    zip.ts             STL をまとめる無圧縮 ZIP
-  worker/              Web Worker（comlink）
-  i18n/                英語・日本語の UI 文言
-  state/               zustand ストア、URL 同期、プリセット
-  preview/Viewer.tsx   3D プレビュー
-  ui/                  パネル・タブ・顔エディタ
-tests/                 ジオメトリのテスト
+  model/params.ts      parameter types, defaults and ranges (shared by UI, URL and geometry)
+  geometry/            DOM-free shape generation (runs in the Worker and in vitest)
+    body.ts            outer surface r(θ,φ), 45° clamp, flat base, lat-long grid, inner offset
+    stem.ts            stem sweep
+    face/presets.ts    2D face part presets
+    face/draw.ts       turns freehand strokes into closed polygons
+    face/layout.ts     pointed-arch tops, island bridges, 2D checks
+    build.ts           CSG (union / difference), hollowing, carving, lid and lip
+    checks.ts          printability checks
+    layout.ts          bed layout on the Print tab
+    manifold.ts        loads manifold-3d (WASM) and frees its objects
+    rng.ts             seeded random numbers and noise
+    stl.ts             binary STL
+    threemf.ts         3MF for the two-color face
+    zip.ts             uncompressed ZIP bundling the STLs
+  worker/              Web Worker (comlink)
+  i18n/                English and Japanese UI strings
+  state/               zustand store, URL sync, presets, stem styles
+  preview/Viewer.tsx   3D preview
+  ui/                  panels, tabs, face editor
+tests/                 geometry tests
 ```
 
-## 形状モデル
+## Shape model
 
 `r(θ,φ) = R · P(φ) · (1 − d · G(u) · W(φ))`
 
-- `P(φ)`：上下で高さが別の超楕円体 × 卵形項 `(1 + k·cosφ)` × ヘタ周りのくぼみ
-- `u = frac(N·(θ + τ·h(φ)) / 2π)`、`G(u) = 1 − |cos(π·u^skew)|^p`、`W(φ) = sin(φ)^q`
-- 筋ごとの幅・深さにシード付きの個体差
-- 各子午線で最大径より下を `|Δρ| ≤ Δz·tan45°` にクランプし、接地径が最大径の 35% 以上になる高さで平らにカット
+- `P(φ)`: a superellipsoid with separate upper and lower heights × an egg term `(1 + k·cosφ)` × a dip around the stem
+- `u = frac(N·(θ + τ·h(φ)) / 2π)`, `G(u) = 1 − |cos(π·u^skew)|^p`, `W(φ) = sin(φ)^q`
+- Seeded per-rib variation in width and depth, plus an optional low-frequency wobble (zero at the poles)
+- On each meridian, the part below the widest point is clamped to `|Δρ| ≤ Δz·tan45°`, and the bottom is cut flat where the contact diameter reaches the Base width ratio of the widest diameter (45% by default, 35–70%; widened if the LED opening needs more room)
 
-## メモ
+## Notes
 
-- ランタンの内天井は 45° の円錐です。上部（肩）は肉厚が厚くなりますが、スライサーのインフィルで埋まります。
-- プレビューも低解像度で CSG を実行し、実際の穴を表示します。書き出し時は高解像度で作り直します。
-- 蓋付き：本物のカボチャのようにヘタの周りをギザギザ（筋 1 本に山 1 つ）に切り抜き、切れ目は 45° のすり鉢です。蓋は落ちず、横にずれず、筋の向きが合う位置でだけはまります。蓋の底は平らな内天井そのものなので、サポートなしでベッドに置いて印刷できます。器はその平天井ぶんの穴が開くだけで、壁は一定の厚さのままです。
-- 点灯プレビューは内側に点光源を置き、くり抜いた面と内側を発光させる表現です（壁を透ける光は再現しません）。
-- ギャラリーは作りません。
+- Lantern inner ceiling: flat in the middle (bridged, up to Ø50 mm), with a 20° cone only where the inner surface would otherwise get flatter than that. Everywhere else the wall stays a constant thickness.
+- The preview also runs the CSG, at low resolution, so it shows the real holes. Export rebuilds at high resolution.
+- Lid on top: like a real pumpkin, the lid is cut in a zigzag around the stem (one tooth per rib) with a 45° funnel-shaped cut. The lid does not fall in, does not slide sideways, and only seats when the ribs line up. Its underside is the flat inner ceiling, so it prints flat on the bed without supports. The bowl just gets an opening the size of that flat ceiling, and the wall stays a constant thickness.
+- The lit preview puts a point light inside and makes the carved faces and the interior glow (it does not simulate light passing through the wall).
+
+## License
+
+MIT (see [`LICENSE`](LICENSE)).
